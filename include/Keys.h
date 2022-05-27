@@ -4,6 +4,9 @@
 #include <cstdint>
 #include "Pin.h"
 
+constexpr uint16_t MaxDoubleClickInterval = 250;    // ms, max time between two clicks to be considered a double click
+constexpr uint16_t MinPressDuration = 700;          // ms, min time to be considered a press
+
 enum class KeyState : uint8_t
 {
     Release     = 0b00000000,	// key is released
@@ -11,8 +14,7 @@ enum class KeyState : uint8_t
     DoubleClick = 0b00000010,	// key is pressed after realeased click
     Press       = 0b00000100,	// key is pressed, debounced and holded
     Debouncing  = 0b00010000,	// key is debouncing
-    WaitingDoubleClickA = 0b00100000,	// key is released after a single click
-    WaitingDoubleClickB = 0b01000000,	// key is pressed afeter WaitingDoubleClickA
+    PreDoubleClick = 0b00100000,	// key is released after a single click
 };
 
 inline bool hasKeyState(const KeyState state, const uint8_t cur_state)
@@ -63,6 +65,12 @@ public:
 };
 
 
+/*
+    State Machine for a single key
+    For readability,
+    DO NOT assign a key_state with number directly, use the enum class KeyState instead
+    And operate the state bit ONLY by the condition which it belongs to though some states will coincide with each other
+*/
 template<typename ...Pins>
 template<typename Pa, typename ...Ps>							    // when compiler optimization is enabled, this function will expand the recursion
 inline void Keys<Pins...>::updateStateSingle(const uint16_t ms)		// update the state of a single key by recrusive template function
@@ -74,58 +82,58 @@ inline void Keys<Pins...>::updateStateSingle(const uint16_t ms)		// update the s
 
     key_cntms += ms;
 	if(hasKeyState(KeyState::Press, key_state))
-        key_cntms = 0;                                              // no need to count time when Pressing
-    if(key_state == 0)                                              // Release and No WaitingDoubleClick
-        key_cntms = 0;                                              // no need to count time when Released totally
+        key_cntms = 0;                                          // no need to count time when Pressing
+    if(key_state == 0)                                          // Release and No WaitingDoubleClick
+        key_cntms = 0;                                          // no need to count time when Released totally
 
-    if(hasKeyState(KeyState::Release, key_state) && pin_cur)            // [Release] -> [Debouncing]
-    {   
-        if( hasKeyState(KeyState::WaitingDoubleClickA, key_state)  && key_cntms<=50 ) // [WaitingDoubleClickA](Release after Clicked) -> [WaitingDoubleClickB](Debouncing or Release)                                      
-        {   
-            key_state &= ~(uint8_t)KeyState::WaitingDoubleClickA;   // cancel WaitingDoubleClickA state
-            key_state |= (uint8_t)KeyState::WaitingDoubleClickB;
-        }   
+    if((key_state==0 || key_state==(uint8_t)KeyState::PreDoubleClick) && pin_cur)            // [Release] -> [Debouncing]
+    {
         key_state |= (uint8_t)KeyState::Debouncing;
-        key_cntms = 0;                                              // reset counter for Debouncing
+        key_cntms = 0;                                          // reset counter for Debouncing
     }
     if(hasKeyState(KeyState::Debouncing, key_state) &&  pin_cur &&  key_cntms>=20) // [Debouncing] -> [Click]
     {   
-        if(hasKeyState(KeyState::WaitingDoubleClickB, key_state))       // [WaitingDoubleClickB](Debouncing or Release) -> [DoubleClick]
-        {   
-            key_state &= ~(uint8_t)KeyState::WaitingDoubleClickB;	// cancel WaitingDoubleClickB state
-            key_state |= (uint8_t)KeyState::DoubleClick;			
+        key_state &= ~(uint8_t)KeyState::Debouncing;            // cancel Debouncing state
+        if(hasKeyState(KeyState::PreDoubleClick, key_state))
+        {
+            key_state |= (uint8_t)KeyState::DoubleClick;
+            key_state &= ~(uint8_t)KeyState::PreDoubleClick;
         }
-        key_state &= ~(uint8_t)KeyState::Debouncing;                // cancel Debouncing state
         key_state |= (uint8_t)KeyState::Click;						
-        key_cntms = 0;                                              // reset counter for Click
+        key_cntms = 0;                                          // reset counter for Click
     }
     if(hasKeyState(KeyState::Debouncing, key_state) && !pin_cur && key_cntms>=20) // [Debouncing] -> [Release]
     {   
-        key_state &= ~(uint8_t)KeyState::Debouncing;				// cancel Debouncing state
-        key_state |= (uint8_t)KeyState::Release;					
-        key_cntms = 0;                                              // reset counter for Release
+        key_state &= ~(uint8_t)KeyState::Debouncing;            // cancel Debouncing state
+        key_cntms = 0;                                          // reset counter for Release
     }
-    if(hasKeyState(KeyState::WaitingDoubleClickA, key_state) && !pin_cur && key_cntms > 50 ) // No further action, [WaitingDoubleClickA] -> [Release] totally
-        key_state &= ~(uint8_t)KeyState::WaitingDoubleClickA;       
-    if(hasKeyState(KeyState::Click, key_state) && !pin_cur)             // [Click] -> [Release]
+    if(hasKeyState(KeyState::PreDoubleClick, key_state) && !pin_cur && key_cntms > MaxDoubleClickInterval) // No further action, [PreDoubleClick] -> [Release] totally
+        key_state &= ~(uint8_t)KeyState::PreDoubleClick;
+    if(hasKeyState(KeyState::Click, key_state) && !pin_cur)     // [Click] -> [Release]
     {
-        if(m_data[key_index].onClick && !hasKeyState(KeyState::Press, key_state) && !hasKeyState(KeyState::DoubleClick, key_state) )  // release->press->release: onClick
+        if(m_data[key_index].onClick && !hasKeyState(KeyState::Press, key_state) && !hasKeyState(KeyState::DoubleClick, key_state))  // release->press->release: onClick
             m_data[key_index].onClick(key_index);
-        if(hasKeyState(KeyState::Press, key_state))
-            key_state &= ~(uint8_t)KeyState::Press;                 // Press -> Release
-        key_state &= ~(uint8_t)KeyState::Click;                     // cancel Click state
-        key_state |= (uint8_t)KeyState::Release;
-        key_state |= (uint8_t)KeyState::WaitingDoubleClickA;        // WaitingDoubleClickA(Release after Clicked)
-        key_cntms = 0;                                              // reset counter for Press
+        key_state &= ~(uint8_t)KeyState::Click;                 // clear Click state        
+        key_state |= (uint8_t)KeyState::PreDoubleClick;         // SingleCilckRelease(Release after Clicked)
+        key_cntms = 0;                                          // reset counter for Press
     }
-	if(hasKeyState(KeyState::DoubleClick, key_state) && !pin_cur)		// [DoubleClick] -> [Release]
-	{
-        if(m_data[key_index].onDoubleClick)
+    if(hasKeyState(KeyState::DoubleClick, key_state) && !pin_cur)   // [DoubleClick] -> [Release]
+    {
+        if(m_data[key_index].onDoubleClick && !hasKeyState(KeyState::Press, key_state))
             m_data[key_index].onDoubleClick(key_index);
-		key_state &= ~(uint8_t)KeyState::DoubleClick;				// cancel DoubleClick state
-		key_state &= ~(uint8_t)KeyState::WaitingDoubleClickA;		// cancel WaitingDoubleClickA state
-	}
-    if( hasKeyState(KeyState::Click, key_state) && pin_cur && key_cntms>=500 ) // [Click] -> [Press]                           
+        key_state &= ~(uint8_t)KeyState::DoubleClick;           // clear DoubleClick state
+        key_state &= ~(uint8_t)KeyState::PreDoubleClick;        // no PreDoubleClick after DoubleClick
+        key_cntms = 0;                                          // reset counter for Press
+    }
+    if(hasKeyState(KeyState::Press, key_state) && !pin_cur)     // [Press] -> [Release]
+    {
+        if(m_data[key_index].onPress)
+            m_data[key_index].onPress(key_index);
+        key_state &= ~(uint8_t)KeyState::Press;                 // clear Press state
+        key_state &= ~(uint8_t)KeyState::PreDoubleClick;        // no PreDoubleClick after Press
+        key_cntms = 0;                                          // reset counter for Press
+    }
+    if(hasKeyState(KeyState::Click, key_state) && pin_cur && key_cntms>=MinPressDuration) // [Click] -> [Press]                           
     {   
         if(m_data[key_index].onPress)
             m_data[key_index].onPress(key_index);
