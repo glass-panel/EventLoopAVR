@@ -3,7 +3,6 @@
 
 #include <cstdint>
 #include <tuple>
-#include <type_traits>
 #include "function_traits.h"
 
 enum class TaskType : uint8_t
@@ -52,10 +51,10 @@ public:
     Task& setArgs(Arguments args) { m_args = args; return *this; }
 };
 
-template<typename Function, typename std::enable_if<std::is_function_v<Function>, bool>::type = true>
+template<typename Function>
 constexpr Task<Function> make_task(Function* func) { return Task<Function>(*func); }
 
-template<typename Functor, typename std::enable_if<std::is_class_v<Functor>, bool>::type = true>
+template<typename Functor>
 constexpr Task<Functor> make_task(Functor func) 
 { 
     return Task<Functor>(func); 

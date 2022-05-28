@@ -37,13 +37,13 @@
    ```c++
    #include "EventLoopAVR.h"
    
-   EventLoop<256, 24> eventloop;	// 声明一个256字节大小的队列用于存放任务，24个timeout任务槽位
+   EventLoop<256, 24> eventloop; // 声明一个256字节大小的队列用于存放任务，24个timeout任务槽位
    
    static const EventLoopHelperFunctions helper_functions
    {
-       preQueueProcess,			// 每次任务队列执行前会执行的函数
-       postQueueProcess,		// 每次任务队列执行后会执行的函数
-       nullptr,					// 未实现
+       preQueueProcess,	// 每次任务队列执行前会执行的函数
+       postQueueProcess, // 每次任务队列执行后会执行的函数
+       nullptr,	// 未实现
        nullptr,
    };
    // 在某个函数里：
@@ -51,7 +51,7 @@
    // 某个一毫秒的定时器中断：
    ISR(TIMER_1MS_INTERRUPT, ISR_MODE)
    {
-       Time::tick();								// 事件循环参考的时钟+1ms
+       Time::tick(); // 事件循环参考的时钟+1ms
    }
    ```
 
@@ -84,12 +84,12 @@
    ```c++
    #include "Keys.h"
    
-   static const sfr_wrapper PINB_W(PINB), PORTC_W(PORTC);	// 包装端口所对应的SFR
-   Keys<PinT<PINB_W, 0>> keys;			// 将B端口0号引脚作为按键所在引脚
+   static const sfr_wrapper PINB_W(PINB), PORTC_W(PORTC); // 包装端口所对应的SFR
+   Keys<PinT<PINB_W, 0>> keys; // 将B端口0号引脚作为按键所在引脚
    
-   void onThatKeyClick(uint8_t index)	// 处理按键的回调函数，index为按键号
+   void onThatKeyClick(uint8_t index) // 处理按键的回调函数，index为按键号
    {
-       PinT<PORTC_W, 1>::set( !PinT<PORTC_W, 1>::get() );	// 对C端口1号引脚反转
+       PinT<PORTC_W, 1>::set( !PinT<PORTC_W, 1>::get() ); // 对C端口1号引脚反转
    }
    // 在某个函数里
    Keys[0].onClick = onThatKeyClick;
@@ -102,11 +102,11 @@
    
    void uart_send_byte(char c)
    {
-       while(!(UCSR0A & (1<<UDRE0)));  // wait for empty transmit buffer
+       while(!(UCSR0A & (1<<UDRE0))); // wait for empty transmit buffer
        UDR0 = c;
    }
    
-   char uart_buffer[128];				// 接收缓冲区
+   char uart_buffer[128]; // 接收缓冲区
    PipeIO<uart_send_byte> uart(uart_buffer, sizeof(uart_buffer));
    
    void onUartData(PipeIO<uart_send_byte>* self, char* prev)
@@ -122,15 +122,15 @@
    ISR(USART_RX_vect, ISR_MODE)
    {
        char c = UDR0;
-       uart.buffer_push(c);			// 将收到的字符推入缓冲区内
+       uart.buffer_push(c); // 将收到的字符推入缓冲区内
    }
    // 在某个函数内
-   uart.onData = onUartData;	    // 设置接收回调函数
+   uart.onData = onUartData; // 设置接收回调函数
    ```
 
 ### Notice
 
-1. 如需要在中断中调用 `nextTick` 或 `setTimeout`，请**务必务必**注意这些函数的重入冲突问题；目前作者建议使用事件循环前会调用的 `preQueueProcess` 函数根据事件所设置的 flag 再推入任务
+1. 如需要在中断中调用 `nextTick` 或 `setTimeout`，请**务必务必**注意这些函数的重入冲突问题；目前建议使用事件循环前会调用的 `preQueueProcess` 函数根据事件所设置的 flag 再推入任务
 2. 出于以上考虑及对各组件的隔离与抽象，`Keys`、`PipeIO` 等对象提供 `.updateState()` 或 `.checkEvents()` 的成员函数完成对事件所设置 flag 的检查与更新，并在其中**直接**调用用户定义的回调函数，可以选择在中断触发时立刻调用这些成员函数以立即执行回调，也可以在事件循环中轮询；也就是说，这些回调函数不会被压入事件循环中，如需要实现完全类似 Javascript 的逻辑，还需手动编写将事件处理函数加入事件循环队列的回调
 3. 事件循环在队列中没有任何任务与timeout队列也为空时会退出，可在 `postQueueProcess` 中加入队列空判断推入一个不做任何事的任务保活
 4. **这项目还没完全写完** ╮(╯▽╰)╭
@@ -140,7 +140,7 @@
 高优先:
 
 - [ ] `onTaskAllocationFailed`、`onTimeoutNodeAllocationFailed`等
-- [ ] lambda函数支持
+- [x] lambda函数支持
 
 低优先：
 
