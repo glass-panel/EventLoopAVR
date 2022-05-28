@@ -2,24 +2,28 @@
     #define __FUNCTION_TRAITS_H__
 
 #include <tuple>
-//#include <functional>
 
-template<typename FunctionType>
-struct function_traits {};
+template<typename>
+struct function_traits;
+
+template<typename FunctorType>
+struct function_traits : public function_traits<decltype(&FunctorType::operator())>
+{};
 
 template<typename ReturnType, typename ...ArgsType>
 struct function_traits<ReturnType (ArgsType...)>
 {
+    using pointer = ReturnType (*)(ArgsType...);
     using returnType = ReturnType;
     using arguments = std::tuple<ArgsType...>;
 };
 
-/*
-template<typename ReturnType, typename ...ArgsType>
-struct function_traits<std::function<ReturnType (ArgsType...)>>
+template<typename ReturnType, typename Class, typename ...ArgsType>
+struct function_traits<ReturnType (Class::*)(ArgsType...) const>
 {
+    using pointer = ReturnType (*)(ArgsType...);
     using returnType = ReturnType;
     using arguments = std::tuple<ArgsType...>;
 };
-*/
+
 #endif

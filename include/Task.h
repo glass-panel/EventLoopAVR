@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <tuple>
+#include <type_traits>
 #include "function_traits.h"
 
 enum class TaskType : uint8_t
@@ -33,22 +34,30 @@ template<typename Function>
 class Task : public TaskBase
 {
 private:
+    using Pointer = typename function_traits<Function>::pointer;
     using ThisType = Task<Function>;
     using Arguments = typename function_traits<Function>::arguments;
     Arguments m_args;
-    Function* m_func;
+    Pointer m_func;
+
 public:
     Task() {}
-    Task(Function func) : m_func(func) {}
-    Task(Function func, Arguments args) : m_func(func), m_args(args) {}
+    Task(Pointer func) : m_func(func) {}
+    Task(Pointer func, Arguments args) : m_func(func), m_args(args) {}
     ~Task() {}
     std::size_t size() const { return sizeof(ThisType); }
     void* faddr() const { return reinterpret_cast<void*>(m_func); }
     void exec() { std::apply(m_func, m_args); }
-    Task& setFunc(Function* func) { m_func = func; return *this; }
+    Task& setFunc(Pointer func) { m_func = func; return *this; }
     Task& setArgs(Arguments args) { m_args = args; return *this; }
 };
 
-template<typename Function>
+template<typename Function, typename std::enable_if<std::is_function_v<Function>, bool>::type = true>
 constexpr Task<Function> make_task(Function* func) { return Task<Function>(*func); }
+
+template<typename Functor, typename std::enable_if<std::is_class_v<Functor>, bool>::type = true>
+constexpr Task<Functor> make_task(Functor func) 
+{ 
+    return Task<Functor>(func); 
+}
 #endif
