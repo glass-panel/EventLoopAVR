@@ -10,6 +10,7 @@
 1. `avr-g++` 至少支持编译 C++14 的版本
 
 该项目使用了部分 stdc++ 库中的元编程模板，为此本项目自带了对所需模板非常粗糙的实现 (no_stdcpp_lib.h) 
+
 如需完整的 stdc++ 库，可以考虑该项目曾采用的 [modm-io 的 stdc++ 库](https://github.com/modm-io/avr-libstdcpp)，你也可以在同组织下找到预编译的高版本 `avr-g++`
 
 ### Features
