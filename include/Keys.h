@@ -1,7 +1,7 @@
 #ifndef __KEYS_H__
     #define __KEYS_H__
 
-#include <cstdint>
+#include "no_stdcpp_lib.h"
 #include "Pin.h"
 
 constexpr uint16_t MaxDoubleClickInterval = 250;    // ms, max time between two clicks to be considered a double click

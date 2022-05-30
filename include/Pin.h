@@ -2,7 +2,7 @@
     #define __PIN_H__
 
 #include <avr/io.h>
-#include <cstdint>
+#include "no_stdcpp_lib.h"
 
 /*
     SFRs are defined by interpret the address number as *(volatile uint8_t*)

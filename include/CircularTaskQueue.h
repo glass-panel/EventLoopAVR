@@ -1,8 +1,7 @@
 #ifndef __CircularTaskQueue_H__
     #define __CircularTaskQueue_H__
 
-#include <cstring>
-#include <tuple>
+#include "no_stdcpp_lib.h"
 #include "Task.h"
 
 template<std::size_t buffer_size>

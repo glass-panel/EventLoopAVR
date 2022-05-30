@@ -1,8 +1,7 @@
 #ifndef __TASK_H__
     #define __TASK_H__
 
-#include <cstdint>
-#include <tuple>
+#include "no_stdcpp_lib.h"
 #include "function_traits.h"
 
 enum class TaskType : uint8_t
@@ -26,6 +25,11 @@ public:
     void* operator new(std::size_t size, void *ptr)
     {
         return ptr;
+    }
+    // ~Task() requires a delete operator though it won't be used
+    void operator delete(void* ptr)
+    {
+        free(ptr);
     }
 };
 

@@ -1,7 +1,7 @@
 #ifndef __EVENTLOOP_H__
     #define __EVENTLOOP_H__
 
-#include <cstdint>
+#include "no_stdcpp_lib.h"
 #include "function_traits.h"
 #include "Time.h"
 #include "Task.h"

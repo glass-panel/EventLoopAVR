@@ -1,12 +1,12 @@
 #ifndef __TIME_H__
     #define __TIME_H__
 
-#include <cstdint>
-#include "compile_time.h"
+#include "no_stdcpp_lib.h"
+
 /*
     In order to provide time for functions that only care about ms,
     and the functions that care about a long time also reduce the size,
-    We use uint32 to represent the minutes passed from 1970-01-01 00:00:00.
+    We use uint32 to represent the minutes passed from 1970-01-01 00:00:00 of the local time.
     And an uint16 to represent the microseconds, so it's max is 60000, just below uint16's limits. 
 */
 
@@ -20,7 +20,7 @@ private:
     uint32_t m_minutes;
     uint16_t m_microseconds;
 
-    inline static int64_t s_offset = __TIME_UNIX__*1000LL;    // offset to the real time in ms, default is the compile time
+    static int64_t s_offset;    // offset to the real time in ms, default is the compile time
     static Time& getInstance() { static Time self(0); return self; }   // need -fno-threadsafe-statics flag to compile, we dont need thread-safe in avr anyway
 public:
     Time() : m_minutes(0), m_microseconds(0) {}
