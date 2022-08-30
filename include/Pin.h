@@ -1,7 +1,6 @@
 #ifndef __PIN_H__
     #define __PIN_H__
 
-#include <avr/io.h>
 #include "no_stdcpp_lib.h"
 
 /*

@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.11)
 # Project name
-project("simple_eventloop")
+project("key_bindings")
 
 # Product filename
-set(PRODUCT_NAME "simple_eventloop")
+set(PRODUCT_NAME "key_bindings")
 # And there is no need for us to install a avr binary in our PC!
 set(CMAKE_SKIP_INSTALL_RULES True)
 

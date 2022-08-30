@@ -1,16 +1,20 @@
 #include "../../include/EventLoopAVR.h"
 
-EventLoop<256, 24> eventloop;   // create an eventloop with 256bytes task queue size and 24 timeout slots
+EventLoop<256> eventloop;   // create an eventloop with 256bytes task queue size and 24 timeout slots
+
+void operator delete(void *ptr, std::size_t size)
+{
+    free(ptr);
+}
 
 static const EventLoopHelperFunctions helper_functions = {  // helper functions for eventloop
     nullptr,    // preQueueProcess
     [](uint16_t totalTaskCount){    // postQueueProcess
         if(!totalTaskCount)
-            eventloop.nextTick(make_task([](){}));  // push an empty task to the queue to keep the eventloop running
+            eventloop.nextTick([](){});  // push an empty task to the queue to keep the eventloop running
         return (uint8_t)0;
     },
     nullptr,    // onTaskAllocationFailed
-    nullptr     // onTimeoutNodeAllocationFailed
 };
 
 void everytime(int a, int b)    // an useless function
@@ -22,9 +26,8 @@ void everytime(int a, int b)    // an useless function
 
 int main()
 {
-    eventloop.setHelperFunctions(&helper_functions);
+    //eventloop.setHelperFunctions(&helper_functions);
     eventloop.nextTick(make_task(everytime).setArgs(std::make_tuple(1, 2)));   // give a task to the eventloop, with arguments filled
-    
     // Be aware:
     // we haven't provide any clock source for Time::tick(), 
     // so the eventloop cannot handle the setTimeout() or similar functions

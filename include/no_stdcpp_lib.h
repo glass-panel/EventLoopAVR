@@ -128,6 +128,19 @@ namespace stl_metaprog_alternative
     }
 
     /* --- end std::apply implementation --- */
+
+    /*
+        Implementation of std::enable_if
+        ref: https://en.cppreference.com/w/cpp/types/enable_if
+    */
+
+    template<bool B, class T = void>
+    struct enable_if {};
+    
+    template<class T>
+    struct enable_if<true, T> { typedef T type; };
+
+    /* --- end std::enable_if implementation --- */
 }
 
 namespace std
@@ -165,6 +178,9 @@ namespace std
 
     template<size_t N>
     using make_index_sequence = stl_metaprog_alternative::make_index_sequence<N>;
+
+    template<bool B, class T = void>
+    using enable_if = stl_metaprog_alternative::enable_if<B, T>;
 }
 
 #endif

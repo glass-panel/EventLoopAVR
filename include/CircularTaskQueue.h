@@ -40,9 +40,8 @@ public:
     TaskBase* end() { return reinterpret_cast<TaskBase*>(m_end); }
     TaskBase* next(TaskBase* cur);  
 
-    TaskBase* push(TaskBase* ptr);
-    template<typename Function>
-    TaskBase* push(const Task<Function> &task);
+    TaskBase* push(const TaskBase* ptr);
+    TaskBase* push(const TaskBase &task) { return push(&task); }
 
     void pop();
 };
@@ -75,25 +74,12 @@ char* CircularTaskQueue<buffer_size>::calcAllocAddr(std::size_t size)
 
 // push a task to the front of the queue
 template<size_t buffer_size>
-template<typename Function>
-TaskBase* CircularTaskQueue<buffer_size>::push(const Task<Function> &task)
-{
-    const auto addr = calcAllocAddr(sizeof(task));
-    if(addr == nullptr)
-        return nullptr;
-    auto p = new(addr) Task<Function>(task);
-    length++;
-    return p;
-}
-
-// push a task to the front of the queue
-template<size_t buffer_size>
-TaskBase* CircularTaskQueue<buffer_size>::push(TaskBase* ptr)
+TaskBase* CircularTaskQueue<buffer_size>::push(const TaskBase* ptr)
 {   // we have no type info here so just copy it by size
     const auto addr = calcAllocAddr(ptr->size());
-    if(addr == nullptr)
+    if(!addr)
         return nullptr;
-    memcpy(addr, ptr, ptr->size());
+    ptr->copy(addr);
     length++;
     return reinterpret_cast<TaskBase*>(addr);
 }

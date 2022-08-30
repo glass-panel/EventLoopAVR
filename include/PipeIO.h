@@ -1,7 +1,9 @@
 #ifndef __PIPEIO_H__
     #define __PIPEIO_H__
 
-#include "no_stdcpp_lib.h"
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 enum class PipeIOFlags : uint8_t
 {
@@ -51,7 +53,7 @@ public:
     PipeIO<Func>& operator<<(int32_t number) { sendInt32(number); return *this; }
     PipeIO<Func>& operator<<(int64_t number) { sendInt64(number); return *this; }
     PipeIO<Func>& operator<<(float number) { sendFloat(number); return *this; }
-    PipeIO<Func>& operator<<(void* address) { sendInt32((uint32_t)address, true); return *this; }
+    PipeIO<Func>& operator<<(void* address) { sendInt32((int32_t)address, true); return *this; }
     
     // input functions
     bool buffer_push(char c);
@@ -114,6 +116,7 @@ void PipeIO<Func>::sendFloat(float number, uint8_t decimals)
 {
     sendInt32((int32_t)number);
     int32_t tens = 1;
+    number = number<0? -number:number;
     for(int i=0; i<decimals; i++)
     {
         tens *= 10;
