@@ -1,8 +1,9 @@
 #include "../../include/EventLoopAVR.h"
 
-EventLoop<256> eventloop;   // create an eventloop with 256bytes task queue size and 24 timeout slots
+EventLoop<256> eventloop;   // create an eventloop with 256bytes queue
 
-void operator delete(void *ptr, std::size_t size)
+// lambda functions require us implement operator delete though we'll never use it
+void operator delete(void *ptr, std::size_t size)   
 {
     free(ptr);
 }

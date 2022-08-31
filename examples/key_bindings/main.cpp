@@ -7,14 +7,24 @@
 #define CLOCK_FREQ 16000000
 #define TIMER_PRESCALER 64
 
+// lambda functions require us implement operator delete though we'll never use it
 void operator delete(void* ptr, std::size_t size)
 {
     free(ptr);
 }
 
-static const sfr_wrapper PORTB_W(PORTB), PORTC_W(PORTC);    // warp the ports for template usage
-Keys<PinT<PORTB_W, 1>, PinT<PORTB_W, 2>> keys;  // bind PORTB.1 to keys[0] and PORTB.2 to keys[1]
-EventLoop<256> eventloop;                       // create an eventloop with 256bytes task queue size and 24 timeout slots
+/*
+    Notice here:
+    To use PinT<>, we need to know the sfr's address.
+    Here, we use compiler's builtin method to reinteprete the marco back to address and make it constexpr.
+    Or you can just put the address into the template directly.
+*/
+constexpr intptr_t PINB_ADDRESS = __builtin_constant_p((intptr_t)&PINB),
+                   PORTC_ADDRESS = __builtin_constant_p((intptr_t)&PORTC);
+
+Keys<PinT<PINB_ADDRESS, 0>, PinT<PINB_ADDRESS, 1>> keys;  // bind PINB.0 to keys[0] and PINB.1 to keys[1]
+
+EventLoop<256> eventloop;                       // create an eventloop with 256bytes queue
 int64_t Time::s_offset = 0;                     // offset to the real time in milliseconds
 
 const static EventLoopHelperFunctions helper_functions = {
@@ -49,8 +59,8 @@ ISR(TIMER1_COMPA_vect, ISR_BLOCK)
 
 void reversePinEach1s(bool prev)
 {
-    PinT<PORTC_W, 0>::set(!prev);               // reverse the state of PORTC.0, according to the previous state
-    eventloop.setTimeout(make_task(reversePinEach1s).setArgs({!prev}), 1000);   // keep calling itself every 1s
+    PinT<PORTC_ADDRESS, 0>::set(!prev);               // reverse the state of PORTC.0, according to the previous state
+    eventloop.setTimeout(reversePinEach1s, 1000, !prev);   // keep calling itself every 1s
 }
 
 int main()

@@ -5,12 +5,13 @@
 #define CLOCK_FREQ 16000000
 #define TIMER_PRESCALER 64
 
+// lambda functions require us implement operator delete though we'll never use it
 void operator delete(void *ptr, std::size_t size)
 {
     free(ptr);
 }
 
-EventLoop<256> eventloop;   // create an eventloop with 256bytes task queue size and 24 timeout slots
+EventLoop<256> eventloop;   // create an eventloop with 256bytes queue
 int64_t Time::s_offset = 0;     // offset to the real time in milliseconds
 
 // timer1 interrupt, interrupt every 1ms
@@ -27,6 +28,7 @@ ISR(TIMER1_COMPA_vect, ISR_BLOCK)
 int cancelThis()
 {
     eventloop.setTimeout(make_task(cancelThis), 60000);
+    return 0;
 }
 
 int main()
@@ -42,9 +44,10 @@ int main()
     eventloop.setTimeout([](int a, int b){
         int c = a+b;
         int d = a-b;
+        return c*d;
     }, 2000, 1, 2);                             // set a task to be executed in 2 seconds, with arguments filled
 
-    eventloop.setTimeout(make_task(cancelThis), 60000);  // be aware: the max timeout is 65535ms, you should create a nested timeout to keep it longer
+    eventloop.setTimeout(cancelThis, 60000);
     eventloop.clearTimeout(cancelThis);  // cancel the timeout task by function poineter
 
     eventloop.run();    // let the eventloop run!
