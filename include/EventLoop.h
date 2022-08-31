@@ -52,32 +52,46 @@ public:
     template<typename Function>
     TaskBase* nextTick(const Task<Function>& task) { return nextTick(&task); }
 
-    template<typename Function, typename ...Args, 
-             typename = decltype(&Function::operator())>
-    TaskBase* nextTick(Function func, Args&&... args) 
-    {   
-        //static_assert(is_task<Function>::value, "Not based of");
-        return nextTick(make_task(func).setArgs({args...})); 
-    }
+    template<typename Ret, typename ...Args>
+    TaskBase* nextTick(Ret func(Args...), Args... args)
+    { return nextTick(make_task(func).setArgs({args...})); }
+
+    template<typename Callable, typename ...Args, typename = decltype(&Callable::operator())>   // template for lambda
+    TaskBase* nextTick(Callable callable, Args... args) 
+    { return nextTick(make_task(callable).setArgs({args...})); }
     
-    template<typename Function>
-    TaskBase* setTimeout(const Task<Function>& task, uint32_t ms);
-    template<typename Function, typename ...Args, 
-             typename = decltype(&Function::operator())>
-    TaskBase* setTimeout(Function func, uint32_t ms, Args&&... args) 
-    { return setTimeout(make_task(func).setArgs({args...}), ms); }
 
     template<typename Function>
+    TaskBase* setTimeout(const Task<Function>& task, uint32_t ms);
+
+    template<typename Ret, typename ...Args>
+    TaskBase* setTimeout(Ret func(Args...), uint32_t ms, Args... args)
+    { return setTimeout(make_task(func).setArgs({args...}), ms); }
+    
+    template<typename Callable, typename ...Args, typename = decltype(&Callable::operator())>   // template for lambda
+    TaskBase* setTimeout(Callable callable, uint32_t ms, Args... args) 
+    { return setTimeout(make_task(callable).setArgs({args...}), ms); }
+
+    
+    template<typename Function>
     void clearTimeout(Function func);
+
     template<typename Function>
     TaskBase* findTimeout(Function func);
 
+
     template<typename Function>
     TaskBase* bindEventHandler(TaskBase* &event_handler, const Task<Function>& task);
-    template<typename Function, typename ...Args, 
-             typename = decltype(&Function::operator())>
-    TaskBase* bindEventHandler(TaskBase* &event_handler, Function func, Args&&... args) 
+
+    template<typename Ret, typename ...Args>
+    TaskBase* bindEventHandler(TaskBase* &event_handler, Ret func(Args...), Args... args)
     { return bindEventHandler(event_handler, make_task(func).setArgs({args...})); }
+
+    template<typename Callable, typename ...Args, typename = decltype(&Callable::operator())>   // template for lambda
+    TaskBase* bindEventHandler(TaskBase* &event_handler, Callable callable, Args... args) 
+    { return bindEventHandler(event_handler, make_task(callable).setArgs({args...})); }
+
+
     void clearEventHandler(TaskBase* &taskptr);
 
     uint8_t runOnce(int16_t passed_ms)
@@ -147,7 +161,7 @@ void EventLoop<taskbuf_size>::clearTimeout(Function func)
     // called, which is m_cur_begin.
     void* func_ptr = (void*)(+func);
     for(TaskBase* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
-        if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LongTimeoutTask ) && ptr->faddr() == func_ptr)    
+        if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LONGTIMEOUT ) && ptr->faddr() == func_ptr)    
             ptr->disable();
 }
 
@@ -159,7 +173,7 @@ TaskBase* EventLoop<taskbuf_size>::findTimeout(Function func)
     // the timeout task will only be stored and get executed after m_cur_begin
     void* func_ptr = (void*)(+func);
     for(TaskBase* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
-        if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LongTimeoutTask ) && ptr->faddr() == func_ptr)    
+        if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LONGTIMEOUT ) && ptr->faddr() == func_ptr)    
             return ptr;
     return nullptr;
 }
@@ -198,7 +212,7 @@ void EventLoop<taskbuf_size>::runCurrentQueue(int16_t passed_ms)
     {
         switch (p->type()) 
         {
-        case TaskType::DEFAULT:
+        case TaskType::DEFAULT_TASK:
             p->exec();
             break;
         case TaskType::TIMEOUT:
@@ -211,7 +225,7 @@ void EventLoop<taskbuf_size>::runCurrentQueue(int16_t passed_ms)
                     next->setTimeLeft(p->getTimeLeft()-passed_ms);
             }
             break;
-        case TaskType::LongTimeoutTask:
+        case TaskType::LONGTIMEOUT:
             if(p->getScheduleTime() <= Time::absolute())
                 p->exec();
             else

@@ -21,7 +21,7 @@ void everytime(int a, int b)    // an useless function
 {
     int c = a+b;
     int d = a-b;
-    eventloop.nextTick(make_task(everytime).setArgs({c,d}));    // push itself back to the eventloop again, with different arguments
+    eventloop.nextTick(everytime, d, c);    // push itself back to the eventloop again, with different arguments
 }
 
 int main()

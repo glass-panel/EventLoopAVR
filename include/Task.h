@@ -7,9 +7,9 @@
 
 enum class TaskType : uint8_t
 {
-    DEFAULT = 0,
+    DEFAULT_TASK = 0,   // That FXXKING Ardunio IDE pre-defined DEFAULT as 1 !!!
     TIMEOUT,
-    LongTimeoutTask,
+    LONGTIMEOUT,
     EVENT,
     DISABLED,
 };
@@ -92,7 +92,7 @@ class Task : public TaskMixin<Task, Function>
 public:
     Task() {}
     Task(Function func) : TaskMixin<Task, Function>(func) {}
-    TaskType type() const override { return this->faddr()? TaskType::DEFAULT : TaskType::DISABLED; }
+    TaskType type() const override { return this->faddr()? TaskType::DEFAULT_TASK : TaskType::DISABLED; }
 };
 
 template<typename Function>
@@ -118,7 +118,7 @@ public:
     LongTimeoutTask() {}
     LongTimeoutTask(Function func) : TaskMixin<LongTimeoutTask, Function>(func) {}
     
-    TaskType type() const override { return this->faddr()? TaskType::LongTimeoutTask : TaskType::DISABLED; }
+    TaskType type() const override { return this->faddr()? TaskType::LONGTIMEOUT : TaskType::DISABLED; }
     Time getScheduleTime() const override { return m_schedule; }
     void setScheduleTime(const Time& time) override { m_schedule = time; }
 };

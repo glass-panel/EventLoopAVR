@@ -1,7 +1,7 @@
 #ifndef __PIPEIO_H__
     #define __PIPEIO_H__
 
-#include <stdint.h>
+#include "no_stdcpp_lib.h"
 #include <stdlib.h>
 #include <string.h>
 
