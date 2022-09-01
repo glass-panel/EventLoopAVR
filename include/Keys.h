@@ -89,7 +89,7 @@ public:
         m_cntms += passed_ms;
         if(hasKeyState(KeyState::Press, m_state))
             m_cntms = 0;                                          // no need to count time when Pressing
-        if((m_state&0x0F) == 0)                             // Release and No WaitingDoubleClick
+        if((m_state&0x1F) == 0)                             // Release and No WaitingDoubleClick
             m_cntms = 0;                                          // no need to count time when Released totally
 
         if(hasKeyState(KeyState::Release, m_state) && pin_cur)            // [Release] -> [Debouncing]
@@ -165,7 +165,9 @@ private:
 
     template<std::size_t I=0>
     void updateStateRecrusive(uint16_t passed_ms, std::tuple<Key<Pins>*...>& selfptr, std::index_sequence<I>)
-    {}
+    {
+        std::get<I>(selfptr)->updateState(passed_ms);
+    }
 #endif
 
 public:

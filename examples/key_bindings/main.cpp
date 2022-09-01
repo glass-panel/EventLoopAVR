@@ -70,7 +70,7 @@ int main()
     DDRB = 0;                                   // set port B to input
     DDRC = 0xff;                                // set port C to output
 
-//    eventloop.setHelperFunctions(&helper_functions); 
+    eventloop.setHelperFunctions(&helper_functions); 
     eventloop.bindEventHandler(keys[0].onClick, [](){                       // set onClick callback for keys[0]
         eventloop.nextTick(make_task(reversePinEach1s).setArgs({false}));   // start to reverse PORTC.0 state every 1s
     });
