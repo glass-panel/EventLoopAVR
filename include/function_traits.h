@@ -1,7 +1,11 @@
 #ifndef __FUNCTION_TRAITS_H__
     #define __FUNCTION_TRAITS_H__
 
-#include "no_stdcpp_lib.h"
+#ifdef USE_STDCPP_LIB
+    #include <tuple>
+#else
+    #include "no_stdcpp_lib.h"
+#endif
 
 template<typename>
 struct function_traits;

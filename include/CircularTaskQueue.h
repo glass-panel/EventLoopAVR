@@ -1,7 +1,6 @@
 #ifndef __CircularTaskQueue_H__
     #define __CircularTaskQueue_H__
 
-#include "no_stdcpp_lib.h"
 #include "Task.h"
 
 template<std::size_t buffer_size>
@@ -47,7 +46,7 @@ public:
 };
 
 // calculate an available address for a new task, CANNOT be used in ISR
-template<size_t buffer_size>
+template<std::size_t buffer_size>
 char* CircularTaskQueue<buffer_size>::calcAllocAddr(std::size_t size)
 {
     char *addr = nullptr;
@@ -73,7 +72,7 @@ char* CircularTaskQueue<buffer_size>::calcAllocAddr(std::size_t size)
 }
 
 // push a task to the front of the queue
-template<size_t buffer_size>
+template<std::size_t buffer_size>
 TaskBase* CircularTaskQueue<buffer_size>::push(const TaskBase* ptr)
 {   // we have no type info here so just copy it by size
     const auto addr = calcAllocAddr(ptr->size());
@@ -85,7 +84,7 @@ TaskBase* CircularTaskQueue<buffer_size>::push(const TaskBase* ptr)
 }
 
 // pop the element at the back of the queue
-template<size_t buffer_size>
+template<std::size_t buffer_size>
 void CircularTaskQueue<buffer_size>::pop() 
 {
     if(length <= 0)
@@ -104,7 +103,7 @@ void CircularTaskQueue<buffer_size>::pop()
 }
 
 // return the next TaskBase's address in the buffer, considered truncated case
-template<size_t buffer_size>
+template<std::size_t buffer_size>
 TaskBase* CircularTaskQueue<buffer_size>::next(TaskBase* ptr)
 {
     char* tmp = reinterpret_cast<char*>(ptr) + ptr->size();

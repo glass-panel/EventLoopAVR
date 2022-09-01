@@ -1,9 +1,15 @@
 #ifndef __PIPEIO_H__
     #define __PIPEIO_H__
 
-#include "no_stdcpp_lib.h"
-#include <stdlib.h>
-#include <string.h>
+#ifdef USE_STDCPP_LIB
+    #include <cstdint>
+    #include <cstdlib>
+    #include <cstring>
+#else
+    #include "no_stdcpp_lib.h"
+    #include <stdlib.h>
+    #include <string.h>
+#endif
 
 enum class PipeIOFlags : uint8_t
 {

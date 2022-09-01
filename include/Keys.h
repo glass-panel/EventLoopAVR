@@ -1,7 +1,13 @@
 #ifndef __KEYS_H__
     #define __KEYS_H__
 
-#include "no_stdcpp_lib.h"
+#ifdef USE_STDCPP_LIB
+    #include <tuple>
+    #include <cstdint>
+    #include <utility>
+#else
+    #include "no_stdcpp_lib.h"
+#endif
 #include "Pin.h"
 #include "Task.h"
 

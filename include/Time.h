@@ -1,7 +1,12 @@
 #ifndef __TIME_H__
     #define __TIME_H__
 
-#include "no_stdcpp_lib.h"
+#ifdef USE_STDCPP_LIB
+    #include <tuple>
+    #include <cstdint>
+#else
+    #include "no_stdcpp_lib.h"
+#endif
 
 /*  
     Time Singleton: Provide the type to represent time, 

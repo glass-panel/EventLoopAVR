@@ -1,7 +1,11 @@
 #ifndef __PIN_H__
     #define __PIN_H__
 
-#include "no_stdcpp_lib.h"
+#ifdef USE_STDCPP_LIB
+    #include <cstdint>
+#else
+    #include "no_stdcpp_lib.h"
+#endif
 
 /*
     Notice here:

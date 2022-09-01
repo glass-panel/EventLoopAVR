@@ -1,7 +1,14 @@
 #ifndef __TASK_H__
     #define __TASK_H__
 
-#include "no_stdcpp_lib.h"
+#ifdef USE_STDCPP_LIB
+    #include <tuple>
+    #include <cstdint>
+    #include <cstdlib>
+#else
+    #include "no_stdcpp_lib.h"
+#endif
+
 #include "Time.h"
 #include "function_traits.h"
 
