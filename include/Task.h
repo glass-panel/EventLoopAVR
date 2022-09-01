@@ -54,6 +54,10 @@ public:
     {
         return ptr;
     }
+    void operator delete(void* ptr, std::size_t)
+    {
+        free(ptr);
+    }
 };
 
 template<template<class> class Derived, typename Function>

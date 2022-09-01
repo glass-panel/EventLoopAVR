@@ -9,6 +9,15 @@
 
 struct EventLoopHelperFunctions
 {
+    EventLoopHelperFunctions(
+        uint8_t (*_preQueueProcess)(uint16_t) = nullptr, 
+        uint8_t (*_postQueueProcess)(uint16_t) = nullptr,
+        void (*_onTaskAllocationFailed)(void*) = nullptr 
+    ) : preQueueProcess(_preQueueProcess),
+        postQueueProcess(_postQueueProcess),
+        onTaskAllocationFailed(_onTaskAllocationFailed)
+    {}
+
     uint8_t (*preQueueProcess)(uint16_t) = nullptr;
     uint8_t (*postQueueProcess)(uint16_t) = nullptr;
     void (*onTaskAllocationFailed)(void*) = nullptr;

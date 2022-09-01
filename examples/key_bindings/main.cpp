@@ -7,12 +7,6 @@
 #define CLOCK_FREQ 16000000
 #define TIMER_PRESCALER 64
 
-// lambda functions require us implement operator delete though we'll never use it
-void operator delete(void* ptr, std::size_t size)
-{
-    free(ptr);
-}
-
 /*
     Notice here:
     To use PinT<>, we need to know the sfr's address.
@@ -27,7 +21,8 @@ Keys<PinT<PINB_ADDRESS, 0>, PinT<PINB_ADDRESS, 1>> keys;  // bind PINB.0 to keys
 EventLoop<256> eventloop;                       // create an eventloop with 256bytes queue
 int64_t Time::s_offset = 0;                     // offset to the real time in milliseconds
 
-const static EventLoopHelperFunctions helper_functions = {
+
+const EventLoopHelperFunctions helper_functions{
     [](uint16_t totalTaskCount){
         static Time prev = 0;
         Time now = Time::absolute();
@@ -43,7 +38,6 @@ const static EventLoopHelperFunctions helper_functions = {
             eventloop.nextTick(make_task([](){}));  // push an empty task to the queue to keep the eventloop running
         return (uint8_t)0;
     },
-    nullptr,
 };
 
 // timer1 interrupt, interrupt every 1ms
@@ -76,7 +70,7 @@ int main()
     DDRB = 0;                                   // set port B to input
     DDRC = 0xff;                                // set port C to output
 
-    eventloop.setHelperFunctions(&helper_functions); 
+//    eventloop.setHelperFunctions(&helper_functions); 
     eventloop.bindEventHandler(keys[0].onClick, [](){                       // set onClick callback for keys[0]
         eventloop.nextTick(make_task(reversePinEach1s).setArgs({false}));   // start to reverse PORTC.0 state every 1s
     });

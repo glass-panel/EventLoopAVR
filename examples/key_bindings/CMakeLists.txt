@@ -30,7 +30,7 @@ link_directories("$ENV{HOME}/Dev/avr/firmwares/")
 
 add_compile_options(
     -mmcu=${MCU} # MCU
-    -std=c++17
+    -std=c++11
     -Wall # enable warnings
     -Wno-main
     -Wundef

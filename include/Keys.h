@@ -10,21 +10,21 @@ constexpr uint16_t MinPressDuration = 700;          // ms, min time to be consid
 
 enum class KeyState : uint8_t
 {
-    Release         = 0b00000000,	// key is released
-    Click           = 0b00000001,	// key is pressed and debounced
-    DoubleClick     = 0b00000010,	// key is pressed after realeased click
-    Press           = 0b00000100,	// key is pressed, debounced and holded
-    Debouncing      = 0b00001000,	// key is debouncing
-    PreDoubleClick  = 0b00010000,	// key is released after a single click
+    Release         = 0,	// key is released
+    Click           = 1,	// key is pressed and debounced
+    DoubleClick     = 2,	// key is pressed after realeased click
+    Press           = 4,	// key is pressed, debounced and holded
+    Debouncing      = 8,	// key is debouncing
+    PreDoubleClick  = 16,	// key is released after a single click
 
-    OnClickFlag     = 0b00100000,
-    OnDbClickFlag   = 0b01000000,
-    OnPressFlag     = 0b10000000,
+    OnClickFlag     = 32,
+    OnDbClickFlag   = 64,
+    OnPressFlag     = 128,
 };
 
 inline bool hasKeyState(const KeyState state, const uint8_t cur_state)
 {
-    if((cur_state&0b00001111)==0 && state==KeyState::Release)
+    if((cur_state&0x0F)==0 && state==KeyState::Release)
         return true;
     return ((uint8_t)state & cur_state) > 0;
 }
@@ -89,7 +89,7 @@ public:
         m_cntms += passed_ms;
         if(hasKeyState(KeyState::Press, m_state))
             m_cntms = 0;                                          // no need to count time when Pressing
-        if((m_state&0b00011111) == 0)                             // Release and No WaitingDoubleClick
+        if((m_state&0x0F) == 0)                             // Release and No WaitingDoubleClick
             m_cntms = 0;                                          // no need to count time when Released totally
 
         if(hasKeyState(KeyState::Release, m_state) && pin_cur)            // [Release] -> [Debouncing]
@@ -156,13 +156,16 @@ private:
     KeyBase* m_refs[sizeof...(Pins)];
 
 #if __cplusplus < 201703L
-    template<std::size_t I, std::size_t... N>
-    void updateStateRecrusive(uint16_t passed_ms, std::tuple<Key<Pins>*...>& selfptr)
+    template<std::size_t I, std::size_t... Is>
+    void updateStateRecrusive(uint16_t passed_ms, std::tuple<Key<Pins>*...>& selfptr, std::index_sequence<I, Is...>)
     {
-        selfptr->updateState(passed_ms);
-        if(sizeof...(N) > 0)
-            updateStateRecrusive<N...>(passed_ms, selfptr);
+        std::get<sizeof...(Is)>(selfptr)->updateState(passed_ms);
+        updateStateRecrusive(passed_ms, selfptr, std::make_index_sequence<sizeof...(Is)>{});
     }
+
+    template<std::size_t I=0>
+    void updateStateRecrusive(uint16_t passed_ms, std::tuple<Key<Pins>*...>& selfptr, std::index_sequence<I>)
+    {}
 #endif
 
 public:
@@ -179,7 +182,7 @@ public:
         ( this->Key<Pins>::updateState(passed_ms) , ... );
 #else
         auto tmp = std::make_tuple(static_cast<Key<Pins>*>(this)...);
-        updateStateRecrusive<std::make_index_sequence<sizeof...(Pins)>>(passed_ms, tmp);
+        updateStateRecrusive(passed_ms, tmp, std::make_index_sequence<sizeof...(Pins)>{});
 #endif
     }
 

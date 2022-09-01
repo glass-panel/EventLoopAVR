@@ -7,10 +7,10 @@
 
 enum class PipeIOFlags : uint8_t
 {
-    NONE    = 0b00000000,
-    ONDATA  = 0b00000001,
-    ONFULL  = 0b00000010,
-    RECVBUSY= 0b00000100,
+    NONE    = 0,
+    ONDATA  = 1,
+    ONFULL  = 2,
+    RECVBUSY= 4,
 };
 
 using BlockingSendByteFunc = void (*)(char);

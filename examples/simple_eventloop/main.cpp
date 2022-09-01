@@ -2,20 +2,14 @@
 
 EventLoop<256> eventloop;   // create an eventloop with 256bytes queue
 
-// lambda functions require us implement operator delete though we'll never use it
-void operator delete(void *ptr, std::size_t size)   
-{
-    free(ptr);
-}
-
-static const EventLoopHelperFunctions helper_functions = {  // helper functions for eventloop
-    nullptr,    // preQueueProcess
-    [](uint16_t totalTaskCount){    // postQueueProcess
+const EventLoopHelperFunctions helper_functions = { // helper functions for eventloop
+    nullptr,                                        // preQueueProcess
+    [](uint16_t totalTaskCount){                    // postQueueProcess
         if(!totalTaskCount)
-            eventloop.nextTick([](){});  // push an empty task to the queue to keep the eventloop running
+            eventloop.nextTick([](){});             // push an empty task to the queue to keep the eventloop running
         return (uint8_t)0;
     },
-    nullptr,    // onTaskAllocationFailed
+    nullptr,                                        // onTaskAllocationFailed
 };
 
 void everytime(int a, int b)    // an useless function

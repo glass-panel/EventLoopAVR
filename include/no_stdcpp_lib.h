@@ -29,12 +29,15 @@ namespace stl_metaprog_alternative
     };
 
     template<size_t i, typename... Ts>
-    struct TupleImpl;
+    struct TupleImpl
+    {
+        static constexpr size_t _size = 0;
+    };
     
     template<size_t i>  // empty tuple
     struct TupleImpl<i>
     {
-        static constexpr size_t size() { return 0; }
+        static constexpr size_t _size = 0;
     };
 
     template<size_t i, typename Thead, typename... Ttail>
@@ -49,12 +52,19 @@ namespace stl_metaprog_alternative
             TupleImpl<i+1, Ttail...>(tail...)
         {}
 
-        static constexpr size_t size() { return 1 + TupleImpl<i+1, Ttail...>::size(); }
+        static constexpr size_t _size = 1 + TupleImpl<i+1, Ttail...>::_size;
     };
     
     template<typename... Ts>
     using tuple = struct TupleImpl<0, Ts...>;
     
+    template<typename Tuple>
+    struct tuple_size
+    {
+        using value_type = size_t;
+        static constexpr size_t value = Tuple::_size;
+    };
+
     template<typename... Ts>
     constexpr tuple<Ts...> make_tuple(Ts... args)
     {
@@ -111,20 +121,15 @@ namespace stl_metaprog_alternative
     */
 
     template<typename Callable, typename ArgsTuple, size_t... Is>
-    auto applyImpl(Callable f, ArgsTuple& t, index_sequence<Is...>)
+    auto applyImpl(Callable f, ArgsTuple& t, index_sequence<Is...>) -> decltype(f(get<Is>(t)...))
     {
         return f(get<Is>(t)...);
     }
 
     template<typename Callable, typename ArgsTuple>
-    constexpr auto apply(Callable f, ArgsTuple& t)
+    constexpr auto apply(Callable f, ArgsTuple& t) -> decltype(applyImpl(f, t, make_index_sequence<tuple_size<ArgsTuple>::value>{}))
     {
-        return applyImpl(f, t, make_index_sequence<ArgsTuple::size()>());
-    }
-    template<typename Callable, typename ArgsTuple>
-    constexpr auto apply(Callable f, ArgsTuple&& t)
-    {
-        return applyImpl(f, t, make_index_sequence<ArgsTuple::size()>());
+        return applyImpl(f, t, make_index_sequence<tuple_size<ArgsTuple>::value>{});
     }
 
     /* --- end std::apply implementation --- */
@@ -150,6 +155,9 @@ namespace std
     template<typename... Ts>
     using tuple = stl_metaprog_alternative::tuple<Ts...>;
 
+    template<typename Tuple>
+    using tuple_size = stl_metaprog_alternative::tuple_size<Tuple>;
+
     template<typename... Ts>
     constexpr tuple<Ts...> make_tuple(Ts... args)
     {
@@ -163,16 +171,11 @@ namespace std
     }
 
     template<typename Callable, typename ArgsTuple>
-    constexpr auto apply(Callable f, ArgsTuple& t)
+    constexpr auto apply(Callable f, ArgsTuple& t) -> decltype(stl_metaprog_alternative::apply(f, t))
     {
         return stl_metaprog_alternative::apply(f, t);
     }
-    template<typename Callable, typename ArgsTuple>
-    constexpr auto apply(Callable f, ArgsTuple&& t)
-    {
-        return stl_metaprog_alternative::apply(f, t);
-    }
-
+    
     template<size_t... Ints>
     using index_sequence = stl_metaprog_alternative::index_sequence<Ints...>;
 

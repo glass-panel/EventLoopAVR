@@ -5,12 +5,6 @@
 #define CLOCK_FREQ 16000000
 #define TIMER_PRESCALER 64
 
-// lambda functions require us implement operator delete though we'll never use it
-void operator delete(void *ptr, std::size_t size)
-{
-    free(ptr);
-}
-
 EventLoop<256> eventloop;   // create an eventloop with 256bytes queue
 int64_t Time::s_offset = 0;     // offset to the real time in milliseconds
 
