@@ -16,11 +16,11 @@ void operator delete(void* ptr, std::size_t size)
 /*
     Notice here:
     To use PinT<>, we need to know the sfr's address.
-    Here, we use compiler's builtin method to reinteprete the marco back to address and make it constexpr.
-    Or you can just put the address into the template directly.
+    But due to compiler's bug(?), &(*(volatile char*)sfr_address) won't be treated as constexpr
+    So we must declare a variable to provide indirect address to template
 */
-constexpr intptr_t PINB_ADDRESS = __builtin_constant_p((intptr_t)&PINB),
-                   PORTC_ADDRESS = __builtin_constant_p((intptr_t)&PORTC);
+const intptr_t PINB_ADDRESS = (intptr_t)&PINB,
+               PORTC_ADDRESS = (intptr_t)&PORTC;
 
 Keys<PinT<PINB_ADDRESS, 0>, PinT<PINB_ADDRESS, 1>> keys;  // bind PINB.0 to keys[0] and PINB.1 to keys[1]
 

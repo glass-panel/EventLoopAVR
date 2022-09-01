@@ -2,9 +2,14 @@
     #define __PIN_H__
 
 #include "no_stdcpp_lib.h"
-#include <stdint.h>
 
-template<intptr_t Address, uint8_t Index>
+/*
+    Notice here:
+    To use PinT<>, we need to know the sfr's address.
+    But due to compiler's bug(?), &(*(volatile char*)sfr_address) won't be treated as constexpr
+    So we must declare a variable to provide indirect address to template
+*/
+template<const intptr_t& Address, uint8_t Index>
 struct PinT
 {
 static_assert(Index>=0 && Index<8, "Pin: Index must be in range [0, 7]");
