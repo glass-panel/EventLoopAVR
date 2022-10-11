@@ -1,5 +1,3 @@
-// ONLY SUPPORT BY C++17 OR HIGHER!
-
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include "../../include/EventLoopAVR.h"
