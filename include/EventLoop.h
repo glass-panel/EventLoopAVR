@@ -64,8 +64,8 @@ public:
 
     TaskBase* nextTick(const TaskBase* ptr);
 
-    template<typename Function>
-    TaskBase* nextTick(const Task<Function>& task) { return nextTick(&task); }
+    template<typename Callable>
+    TaskBase* nextTick(const Task<Callable>& task) { return nextTick(&task); }
 
     template<typename Ret, typename ...Args>
     TaskBase* nextTick(Ret func(Args...), Args... args)
@@ -76,8 +76,8 @@ public:
     { return nextTick(make_task(callable).setArgs({args...})); }
     
 
-    template<typename Function>
-    TaskBase* setTimeout(const Task<Function>& task, uint32_t ms);
+    template<typename Callable>
+    TaskBase* setTimeout(const Task<Callable>& task, uint32_t ms);
 
     template<typename Ret, typename ...Args>
     TaskBase* setTimeout(Ret func(Args...), uint32_t ms, Args... args)
@@ -87,16 +87,22 @@ public:
     TaskBase* setTimeout(Callable callable, uint32_t ms, Args... args) 
     { return setTimeout(make_task(callable).setArgs({args...}), ms); }
 
-    
-    template<typename Function>
-    void clearTimeout(Function func);
+    void disableTask(TaskBase* task)
+    { m_task_queue.disable(task); }
 
-    template<typename Function>
-    TaskBase* findTimeout(Function func);
+    void clearTimeout(void* faddr);
+    template<typename Ret, typename ...Args>
+    void clearTimeout(Ret func(Args...))
+    { clearTimeout((void*)func); }
+
+    TaskBase* findTimeout(void* addr);
+    template<typename Ret, typename ...Args>
+    TaskBase* findTimeout(Ret func(Args...))
+    { return findTimeout(reinterpret_cast<void*>(func)); }
 
 
-    template<typename Function>
-    TaskBase* bindEventHandler(TaskBase* &event_handler, const Task<Function>& task);
+    template<typename Callable>
+    TaskBase* bindEventHandler(TaskBase* &event_handler, const Task<Callable>& task);
 
     template<typename Ret, typename ...Args>
     TaskBase* bindEventHandler(TaskBase* &event_handler, Ret func(Args...), Args... args)
@@ -144,8 +150,8 @@ TaskBase* EventLoop<taskbuf_size>::nextTick(const TaskBase* ptr)
 
 // delay a task for ms milliseconds
 template<std::size_t taskbuf_size>
-template<typename Function>
-TaskBase* EventLoop<taskbuf_size>::setTimeout(const Task<Function>& task, uint32_t ms)
+template<typename Callable>
+TaskBase* EventLoop<taskbuf_size>::setTimeout(const Task<Callable>& task, uint32_t ms)
 {
     TaskBase *p = nullptr;
     if(ms < 0xFFFF)
@@ -168,34 +174,31 @@ TaskBase* EventLoop<taskbuf_size>::setTimeout(const Task<Function>& task, uint32
 
 // clear the timeout task by the function pointer
 template<std::size_t taskbuf_size>
-template<typename Function>
-void EventLoop<taskbuf_size>::clearTimeout(Function func) 
+void EventLoop<taskbuf_size>::clearTimeout(void* faddr)
 {
     // when runOnce() iterating current task queue, the timeout task iterated will be move to
     // the next queue. So the specified timeout task will exist once after where the clearTimeout() 
     // called, which is m_cur_begin.
-    void* func_ptr = (void*)(+func);
     for(TaskBase* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
-        if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LONGTIMEOUT ) && ptr->faddr() == func_ptr)    
-            ptr->disable();
+        if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LONGTIMEOUT ) && ptr->faddr() == faddr)    
+            m_task_queue.disable(ptr);
 }
 
 // find the timeout task by the function pointer, if not found, return nullptr
 template<std::size_t taskbuf_size>
-template<typename Function>
-TaskBase* EventLoop<taskbuf_size>::findTimeout(Function func)
+TaskBase* EventLoop<taskbuf_size>::findTimeout(void* addr)
 {
-    // the timeout task will only be stored and get executed after m_cur_begin
-    void* func_ptr = (void*)(+func);
     for(TaskBase* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
-        if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LONGTIMEOUT ) && ptr->faddr() == func_ptr)    
+        if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LONGTIMEOUT ) && ptr->faddr() == addr)    
             return ptr;
     return nullptr;
 }
 
+
+
 template<std::size_t taskbuf_size>
-template<typename Function>
-TaskBase* EventLoop<taskbuf_size>::bindEventHandler(TaskBase* &event_handler, const Task<Function> &task)
+template<typename Callable>
+TaskBase* EventLoop<taskbuf_size>::bindEventHandler(TaskBase* &event_handler, const Task<Callable> &task)
 {
     if(event_handler)
         clearEventHandler(event_handler);   // remove old binding first
@@ -214,7 +217,7 @@ template<std::size_t taskbuf_size>
 void EventLoop<taskbuf_size>::clearEventHandler(TaskBase* &taskptr)
 {
     if(taskptr && taskptr->type() == TaskType::EVENT)
-        taskptr->disable();
+        m_task_queue.disable(taskptr);
     taskptr = nullptr;
 }
 

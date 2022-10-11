@@ -43,6 +43,7 @@ public:
     TaskBase* push(const TaskBase &task) { return push(&task); }
 
     void pop();
+    void disable(const TaskBase* ptr);
 };
 
 // calculate an available address for a new task, CANNOT be used in ISR
@@ -100,6 +101,15 @@ void CircularTaskQueue<buffer_size>::pop()
     else
         m_begin = m_begin + size;
     length--;
+}
+
+// disable a task in the queue, aka erase it
+template<std::size_t buffer_size>
+void CircularTaskQueue<buffer_size>::disable(const TaskBase *ptr)
+{
+    const auto size = ptr->size();
+    ptr->~TaskBase();
+    new((void*)ptr) DisabledTask(size); // in place new a DisableTask replacing the original one
 }
 
 // return the next TaskBase's address in the buffer, considered truncated case

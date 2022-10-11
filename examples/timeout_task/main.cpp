@@ -34,12 +34,12 @@ int main()
     OCR1A = CLOCK_FREQ/TIMER_PRESCALER/1000;    // compare match register: 1ms
     TIMSK1 = (1<<OCIE1A);                       // enable timer compare interrupt by setting bit OCIE1A in TIMSK1
     sei();                                      // enable interrupts
-
-    eventloop.setTimeout([](int a, int b){
+    int a=123, b=324;
+    eventloop.setTimeout([=](){
         int c = a+b;
         int d = a-b;
         return c*d;
-    }, 2000, 1, 2);                             // set a task to be executed in 2 seconds, with arguments filled
+    }, 2000);                             // set a task to be executed in 2 seconds, with arguments filled
 
     eventloop.setTimeout(cancelThis, 60000);
     eventloop.clearTimeout(cancelThis);  // cancel the timeout task by function poineter

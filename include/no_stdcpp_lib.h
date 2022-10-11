@@ -146,6 +146,33 @@ namespace stl_metaprog_alternative
     struct enable_if<true, T> { typedef T type; };
 
     /* --- end std::enable_if implementation --- */
+
+    /*
+        Implementation of std::remove_reference
+    */
+
+    template<typename T>
+    struct remove_reference { using type = T; };
+
+    template<typename T> 
+    struct remove_reference<T&> { using type = T; };
+
+    template<typename T>
+    struct remove_reference<T&&> { using type = T; };
+
+    /* --- end std::remove_reference implementation --- */
+
+    /*
+        Implementation of std::forward
+    */
+
+    template<typename T>
+    constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept
+    {
+        return static_cast<T&&>(t);
+    }
+
+    /* --- end std::forward implementation --- */
 }
 
 namespace std
@@ -184,6 +211,23 @@ namespace std
 
     template<bool B, class T = void>
     using enable_if = stl_metaprog_alternative::enable_if<B, T>;
+
+    template<typename T>
+    using remove_reference = stl_metaprog_alternative::remove_reference<T>;
+
+    template<typename T>
+    constexpr T&& forward(typename remove_reference<T>::type& t) noexcept
+    {
+        return static_cast<T&&>(t);
+    }
+
+    template<typename T>
+    constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept
+    {
+        return static_cast<T&&>(t);
+    }
+
+    
 }
 
 #endif

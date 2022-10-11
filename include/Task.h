@@ -24,16 +24,23 @@ enum class TaskType : uint8_t
 class TaskBase
 {
 public:
-    static constexpr bool IsTask = false;
     TaskBase() {}
     virtual ~TaskBase() {};
-    
+
+    template<typename Ret, typename ...Args>
+    constexpr void* extract_raw_function_pointer(Ret func(Args...))
+    { return (void*)func; }
+    template<typename Callable>
+    constexpr void* extract_raw_function_pointer(Callable callable)
+    {
+        auto funcptr = &std::remove_reference<Callable>::type::operator();
+        return (void* &)funcptr;
+    }
+
     // return the size of this task
     virtual std::size_t size() const { return sizeof(TaskBase); }
     // return the task type
     virtual TaskType type() const { return TaskType::DISABLED; }
-    // disable the task
-    virtual void disable() {}
     // execute this task with the arguments inside
     virtual void exec() {};
     // return the function pointer of the task
@@ -67,97 +74,108 @@ public:
     }
 };
 
-template<template<class> class Derived, typename Function>
+class DisabledTask : public TaskBase
+{
+private:
+    std::size_t m_size;
+public:
+    DisabledTask(std::size_t org_size) : m_size(org_size) {}
+
+    std::size_t size() const final { return m_size; }
+    TaskType type() const final { return TaskType::DISABLED; }
+};
+
+template<template<class> class Derived, typename Callable>
 class TaskMixin : public TaskBase
 {
 private:
-    using Pointer = typename function_traits<Function>::pointer;
-    using Arguments = typename function_traits<Function>::arguments;    
+    using StoreType = typename function_traits<Callable>::store_type;
+    using Arguments = typename function_traits<Callable>::arguments;    
     Arguments m_args;
-    Pointer m_func;
+    StoreType m_func;
 public:
+    // default empty constructor gets error when using lambda
     TaskMixin() {}
-    TaskMixin(Function func) : m_func(func) {}
-    TaskMixin(Function func, Arguments args) : m_func(func), m_args(args) {}
+    TaskMixin(Callable func) : m_func(func)
+    {}
+    TaskMixin(Callable func, Arguments args) : m_func(func), m_args(args)
+    {}
     ~TaskMixin() {}
 
-    Derived<Function>& setFunc(Pointer func) { m_func = func; return *static_cast<Derived<Function>*>(this); }
-    Derived<Function>& setArgs(Arguments args) { m_args = args; return *static_cast<Derived<Function>*>(this); }
-    void exec() override { std::apply(m_func, m_args); }
-    void disable() override { m_func = nullptr; }
-
-    std::size_t size() const override { return sizeof(Derived<Function>); }
-    void* faddr() const override { return reinterpret_cast<void*>(m_func); }
-    void copy(void *dst) const override { new(dst) Derived<Function>(*static_cast<const Derived<Function>*>(this)); }
+    Derived<Callable>& setFunc(Callable func) { m_func = func; return *static_cast<Derived<Callable>*>(this); }
+    Derived<Callable>& setArgs(Arguments args) { m_args = args; return *static_cast<Derived<Callable>*>(this); }
+    void exec() final { std::apply(m_func, m_args); }
+    
+    std::size_t size() const final { return sizeof(Derived<Callable>); }
+    void* faddr() const final { return TaskBase::extract_raw_function_pointer(m_func); }
+    void copy(void *dst) const final { new(dst) Derived<Callable>(*static_cast<const Derived<Callable>*>(this)); }
 
     template<template<class> class Similar>
-    Similar<Function> transform() const
+    Similar<Callable> transform() const
     {
-        return Similar<Function>().setFunc(m_func).setArgs(m_args);
+        return Similar<Callable>(m_func).setArgs(m_args);
     }
 };
 
-template<typename Function>
-class Task : public TaskMixin<Task, Function>
+template<typename Callable>
+class Task : public TaskMixin<Task, Callable>
 {
 public:
-    Task() {}
-    Task(Function func) : TaskMixin<Task, Function>(func) {}
-    TaskType type() const override { return this->faddr()? TaskType::DEFAULT_TASK : TaskType::DISABLED; }
+    using TaskMixin<Task, Callable>::TaskMixin;
+
+    TaskType type() const final { return TaskType::DEFAULT_TASK; }
 };
 
-template<typename Function>
-class TimeoutTask : public TaskMixin<TimeoutTask, Function>
+template<typename Callable>
+class TimeoutTask : public TaskMixin<TimeoutTask, Callable>
 {
 private:
     uint16_t m_time = 0;
 public:
-    TimeoutTask() {}
-    TimeoutTask(Function func) : TaskMixin<TimeoutTask, Function>(func) {}
+    using TaskMixin<TimeoutTask, Callable>::TaskMixin;
 
-    TaskType type() const override { return this->faddr()? TaskType::TIMEOUT : TaskType::DISABLED; }
-    uint16_t getTimeLeft() const override { return m_time; }
-    void setTimeLeft(uint16_t ms) override { m_time = ms; }
+    TaskType type() const final { return TaskType::TIMEOUT; }
+    uint16_t getTimeLeft() const final { return m_time; }
+    void setTimeLeft(uint16_t ms) final { m_time = ms; }
 };
 
-template<typename Function>
-class LongTimeoutTask : public TaskMixin<LongTimeoutTask, Function>
+template<typename Callable>
+class LongTimeoutTask : public TaskMixin<LongTimeoutTask, Callable>
 {
 private:
     Time m_schedule = 0;
 public:
-    LongTimeoutTask() {}
-    LongTimeoutTask(Function func) : TaskMixin<LongTimeoutTask, Function>(func) {}
-    
-    TaskType type() const override { return this->faddr()? TaskType::LONGTIMEOUT : TaskType::DISABLED; }
-    Time getScheduleTime() const override { return m_schedule; }
-    void setScheduleTime(const Time& time) override { m_schedule = time; }
+    using TaskMixin<LongTimeoutTask, Callable>::TaskMixin;
+
+    TaskType type() const final { return TaskType::LONGTIMEOUT; }
+    Time getScheduleTime() const final { return m_schedule; }
+    void setScheduleTime(const Time& time) final { m_schedule = time; }
 };
 
-template<typename Function>
-class EventTask : public TaskMixin<EventTask, Function>
+template<typename Callable>
+class EventTask : public TaskMixin<EventTask, Callable>
 {
 private:
     TaskBase** m_keeper = nullptr;
 public:
-    EventTask() {}
-    EventTask(Function func) : TaskMixin<EventTask, Function>(func) {}
+    using TaskMixin<EventTask, Callable>::TaskMixin;
 
-    TaskType type() const override { return this->faddr()? TaskType::EVENT : TaskType::DISABLED; }
-    void updateKeeper() override { if(m_keeper) *m_keeper = this; }
-    void setKeeper(TaskBase** keeper) override { m_keeper = keeper; }
+    TaskType type() const final { return TaskType::EVENT; }
+    void updateKeeper() final { if(m_keeper) *m_keeper = this; }
+    void setKeeper(TaskBase** keeper) final { m_keeper = keeper; }
 };
 
-template<typename Function>
-constexpr Task<Function> make_task(Function* func) 
+template<typename Callable>
+constexpr Task<Callable> make_task(Callable func) 
 { 
-    return Task<Function>(*func); 
+    return Task<Callable>(func); 
 }
 
-template<typename Functor>
-constexpr Task<Functor> make_task(Functor func) 
+template<typename Function>
+constexpr Task<Function*> make_task(Function* func) 
 { 
-    return Task<Functor>(func); 
+    return Task<Function*>(func); 
 }
+
 
 #endif

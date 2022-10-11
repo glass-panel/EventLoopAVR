@@ -75,7 +75,7 @@ int main()
         eventloop.nextTick(make_task(reversePinEach1s).setArgs({false}));   // start to reverse PORTC.0 state every 1s
     });
     eventloop.bindEventHandler(keys[1].onDoubleClick, [](){                 // set onDoubleClick callback for keys[1]
-        eventloop.clearTimeout((void*)reversePinEach1s);                    // stop reversing PORTC.0 state
+        eventloop.clearTimeout(reversePinEach1s);                    // stop reversing PORTC.0 state
     });
 
     eventloop.run();                            // let the eventloop run!

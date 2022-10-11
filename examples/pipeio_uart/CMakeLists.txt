@@ -6,6 +6,8 @@ project("pipeio_uart")
 set(PRODUCT_NAME "pipeio_uart")
 # And there is no need for us to install a avr binary in our PC!
 set(CMAKE_SKIP_INSTALL_RULES True)
+# for vscode's intellisense
+set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 
 # CPU, you can find the list here:
 # https://gcc.gnu.org/onlinedocs/gcc/AVR-Options.html

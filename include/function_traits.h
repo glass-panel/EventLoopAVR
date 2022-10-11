@@ -15,19 +15,39 @@ struct function_traits : public function_traits<decltype(&FunctorType::operator(
 {};
 
 template<typename ReturnType, typename ...ArgsType>
+struct function_traits<ReturnType (&)(ArgsType...)>
+{
+    using pointer = ReturnType (*)(ArgsType...);
+    using return_type = ReturnType;
+    using arguments = std::tuple<ArgsType...>;
+    using store_type = pointer;
+};
+
+template<typename ReturnType, typename ...ArgsType>
+struct function_traits<ReturnType (*)(ArgsType...)>
+{
+    using pointer = ReturnType (*)(ArgsType...);
+    using return_type = ReturnType;
+    using arguments = std::tuple<ArgsType...>;
+    using store_type = pointer;
+};
+
+template<typename ReturnType, typename ...ArgsType>
 struct function_traits<ReturnType (ArgsType...)>
 {
     using pointer = ReturnType (*)(ArgsType...);
-    using returnType = ReturnType;
+    using return_type = ReturnType;
     using arguments = std::tuple<ArgsType...>;
+    using store_type = pointer;
 };
 
 template<typename ReturnType, typename Class, typename ...ArgsType>
 struct function_traits<ReturnType (Class::*)(ArgsType...) const>
 {
-    using pointer = ReturnType (*)(ArgsType...);
-    using returnType = ReturnType;
+    using pointer = ReturnType (Class::*)(ArgsType...);
+    using return_type = ReturnType;
     using arguments = std::tuple<ArgsType...>;
+    using store_type = Class;
 };
 
 #endif
