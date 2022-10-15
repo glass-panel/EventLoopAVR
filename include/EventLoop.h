@@ -67,23 +67,15 @@ public:
     template<typename Callable>
     TaskBase* nextTick(const Task<Callable>& task) { return nextTick(&task); }
 
-    template<typename Ret, typename ...Args>
-    TaskBase* nextTick(Ret func(Args...), Args... args)
-    { return nextTick(make_task(func).setArgs({args...})); }
-
-    template<typename Callable, typename ...Args, typename = decltype(&Callable::operator())>   // template for lambda
+    template<typename Callable, typename ...Args, typename = decltype(std::invoke(std::declval<Callable>(), std::declval<Args>()...))>   // template for lambda
     TaskBase* nextTick(Callable callable, Args... args) 
     { return nextTick(make_task(callable).setArgs({args...})); }
     
 
     template<typename Callable>
     TaskBase* setTimeout(const Task<Callable>& task, uint32_t ms);
-
-    template<typename Ret, typename ...Args>
-    TaskBase* setTimeout(Ret func(Args...), uint32_t ms, Args... args)
-    { return setTimeout(make_task(func).setArgs({args...}), ms); }
     
-    template<typename Callable, typename ...Args, typename = decltype(&Callable::operator())>   // template for lambda
+    template<typename Callable, typename ...Args, typename = decltype(std::invoke(std::declval<Callable>(), std::declval<Args>()...))>   // template for lambda
     TaskBase* setTimeout(Callable callable, uint32_t ms, Args... args) 
     { return setTimeout(make_task(callable).setArgs({args...}), ms); }
 
@@ -104,11 +96,7 @@ public:
     template<typename Callable>
     TaskBase* bindEventHandler(TaskBase* &event_handler, const Task<Callable>& task);
 
-    template<typename Ret, typename ...Args>
-    TaskBase* bindEventHandler(TaskBase* &event_handler, Ret func(Args...), Args... args)
-    { return bindEventHandler(event_handler, make_task(func).setArgs({args...})); }
-
-    template<typename Callable, typename ...Args, typename = decltype(&Callable::operator())>   // template for lambda
+    template<typename Callable, typename ...Args, typename = decltype(std::invoke(std::declval<Callable>(), std::declval<Args>()...))>   // template for lambda
     TaskBase* bindEventHandler(TaskBase* &event_handler, Callable callable, Args... args) 
     { return bindEventHandler(event_handler, make_task(callable).setArgs({args...})); }
 

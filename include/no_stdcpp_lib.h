@@ -15,6 +15,39 @@
 namespace stl_metaprog_alternative
 {
     /*
+        Implementation of std::remove_reference
+    */
+
+    template<typename T>
+    struct remove_reference { using type = T; };
+
+    template<typename T> 
+    struct remove_reference<T&> { using type = T; };
+
+    template<typename T>
+    struct remove_reference<T&&> { using type = T; };
+
+    /* --- end std::remove_reference implementation --- */
+
+    /*
+        Implementation of std::forward
+    */
+
+    template<typename T>
+    constexpr T&& forward(typename remove_reference<T>::type& t) noexcept
+    {
+        return static_cast<T&&>(t);
+    }
+
+    template<typename T>
+    constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept
+    {
+        return static_cast<T&&>(t);
+    }
+
+    /* --- end std::forward implementation --- */
+
+    /*
         Implementation of std::tuple 
         ref: https://stackoverflow.com/questions/4041447/how-is-stdtuple-implemented
     */
@@ -62,7 +95,7 @@ namespace stl_metaprog_alternative
     struct tuple_size
     {
         using value_type = size_t;
-        static constexpr size_t value = Tuple::_size;
+        static constexpr size_t value = remove_reference<Tuple>::type::_size;
     };
 
     template<typename... Ts>
@@ -121,18 +154,30 @@ namespace stl_metaprog_alternative
     */
 
     template<typename Callable, typename ArgsTuple, size_t... Is>
-    auto applyImpl(Callable f, ArgsTuple& t, index_sequence<Is...>) -> decltype(f(get<Is>(t)...))
+    auto applyImpl(Callable&& f, ArgsTuple&& t, index_sequence<Is...>) -> decltype(f(get<Is>(t)...))
     {
         return f(get<Is>(t)...);
     }
 
     template<typename Callable, typename ArgsTuple>
-    constexpr auto apply(Callable f, ArgsTuple& t) -> decltype(applyImpl(f, t, make_index_sequence<tuple_size<ArgsTuple>::value>{}))
+    constexpr auto apply(Callable&& f, ArgsTuple&& t) -> decltype(applyImpl(f, t, make_index_sequence<tuple_size<ArgsTuple>::value>{}))
     {
         return applyImpl(f, t, make_index_sequence<tuple_size<ArgsTuple>::value>{});
     }
 
     /* --- end std::apply implementation --- */
+
+    /*
+        Implementation of std::invoke
+    */
+
+    template<typename Callable, typename ...Args>
+    constexpr auto invoke(Callable&& f, Args&&... args) -> decltype(f(args...))
+    {
+        return f(args...);
+    }
+
+    /* --- end std::invoke implementation --- */
 
     /*
         Implementation of std::enable_if
@@ -148,36 +193,38 @@ namespace stl_metaprog_alternative
     /* --- end std::enable_if implementation --- */
 
     /*
-        Implementation of std::remove_reference
+        Implementation of std::declval
+        ref: https://en.cppreference.com/w/cpp/utility/declval
     */
-
-    template<typename T>
-    struct remove_reference { using type = T; };
 
     template<typename T> 
-    struct remove_reference<T&> { using type = T; };
-
-    template<typename T>
-    struct remove_reference<T&&> { using type = T; };
-
-    /* --- end std::remove_reference implementation --- */
-
-    /*
-        Implementation of std::forward
-    */
-
-    template<typename T>
-    constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept
+    constexpr bool always_false()
     {
-        return static_cast<T&&>(t);
+        return false;
+    }
+    
+    template<typename T>
+    typename remove_reference<T>::type&& declval() noexcept 
+    {
+        static_assert(always_false<T>(), "declval not allowed in an evaluated context");
     }
 
-    /* --- end std::forward implementation --- */
+    /* --- end std::declval implementation --- */
+
 }
 
 namespace std
 {
     using size_t = ::size_t;
+
+    template<typename T>
+    using remove_reference = stl_metaprog_alternative::remove_reference<T>;
+
+    template<typename T>
+    constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept
+    {
+        return stl_metaprog_alternative::forward<T>(t);
+    }
 
     template<typename... Ts>
     using tuple = stl_metaprog_alternative::tuple<Ts...>;
@@ -198,7 +245,7 @@ namespace std
     }
 
     template<typename Callable, typename ArgsTuple>
-    constexpr auto apply(Callable f, ArgsTuple& t) -> decltype(stl_metaprog_alternative::apply(f, t))
+    constexpr auto apply(Callable&& f, ArgsTuple&& t) -> decltype(stl_metaprog_alternative::apply(f, t))
     {
         return stl_metaprog_alternative::apply(f, t);
     }
@@ -212,21 +259,17 @@ namespace std
     template<bool B, class T = void>
     using enable_if = stl_metaprog_alternative::enable_if<B, T>;
 
-    template<typename T>
-    using remove_reference = stl_metaprog_alternative::remove_reference<T>;
-
-    template<typename T>
-    constexpr T&& forward(typename remove_reference<T>::type& t) noexcept
+    template<typename Callable, typename ...Args>
+    constexpr auto invoke(Callable&& f, Args&&... args) -> decltype(stl_metaprog_alternative::invoke(f, args...))
     {
-        return static_cast<T&&>(t);
+        return stl_metaprog_alternative::invoke(f, args...);
     }
-
+    
     template<typename T>
-    constexpr T&& forward(typename remove_reference<T>::type&& t) noexcept
+    constexpr T&& declval() noexcept
     {
-        return static_cast<T&&>(t);
+        return stl_metaprog_alternative::declval<T>();
     }
-
     
 }
 
