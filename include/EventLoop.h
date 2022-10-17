@@ -4,6 +4,7 @@
 #ifdef USE_STDCPP_LIB
     #include <cstdint>
     #include <type_traits>
+    #include <functional>
 #else
     #include "no_stdcpp_lib.h"
 #endif

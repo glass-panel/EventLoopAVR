@@ -28,10 +28,10 @@ public:
     virtual ~TaskBase() {};
 
     template<typename Ret, typename ...Args>
-    constexpr void* extract_raw_function_pointer(Ret func(Args...))
+    constexpr static void* extract_raw_function_pointer(Ret func(Args...))
     { return (void*)func; }
     template<typename Callable>
-    constexpr void* extract_raw_function_pointer(Callable callable)
+    constexpr static void* extract_raw_function_pointer(Callable callable)
     {
         auto funcptr = &std::remove_reference<Callable>::type::operator();
         return (void* &)funcptr;
