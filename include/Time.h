@@ -24,7 +24,7 @@ public:
     Time() : m_1(0), m_2(0) {}
     Time(uint64_t t) : m_1(t>>16), m_2(t&0xFFFF) {}
     
-    operator uint64_t() { return ((uint64_t)m_1<<16) + m_2; }
+    operator uint64_t() const { return ((uint64_t)m_1<<16) + m_2; }
 
     static Time absolute() { return getInstance(); }
     static Time now() { return getInstance() + s_offset; }
