@@ -35,9 +35,9 @@ class EventLoop
 {
 private:
     CircularTaskQueue<taskbuf_size> m_task_queue;
-    TaskBase* m_cur_begin;
-    TaskBase* m_delimiter;
-    TaskBase* m_next_end;
+    TaskInterface* m_cur_begin;
+    TaskInterface* m_delimiter;
+    TaskInterface* m_next_end;
 
     const EventLoopHelperFunctions* m_helper_functions;
     void runCurrentQueue(int16_t passed_ms);
@@ -59,50 +59,56 @@ public:
     
     // DEBUG
     CircularTaskQueue<taskbuf_size>* __debugGetTaskQueue() { return &m_task_queue; }
-    TaskBase* __debugGetCurBegin() { return m_cur_begin; }
-    TaskBase* __debugGetDelimiter() { return m_delimiter; }
-    TaskBase* __debugGetNextEnd() { return m_next_end; }
+    TaskInterface* __debugGetCurBegin() { return m_cur_begin; }
+    TaskInterface* __debugGetDelimiter() { return m_delimiter; }
+    TaskInterface* __debugGetNextEnd() { return m_next_end; }
 
-    TaskBase* nextTick(const TaskBase* ptr);
+    TaskInterface* nextTick(const TaskInterface* ptr);
 
     template<typename Callable>
-    TaskBase* nextTick(const Task<Callable>& task) { return nextTick(&task); }
+    TaskInterface* nextTick(const Task<Callable>& task) { return nextTick(&task); }
 
     template<typename Callable, typename ...Args, typename = decltype(std::invoke(std::declval<Callable>(), std::declval<Args>()...))>
-    TaskBase* nextTick(Callable callable, Args... args) 
+    TaskInterface* nextTick(Callable callable, Args... args) 
     { return nextTick(make_task(callable).setArgs({args...})); }
     
 
     template<typename Callable>
-    TaskBase* setTimeout(const Task<Callable>& task, uint32_t ms);
+    TaskInterface* setTimeout(const Task<Callable>& task, uint32_t ms);
     
     template<typename Callable, typename ...Args, typename = decltype(std::invoke(std::declval<Callable>(), std::declval<Args>()...))>
-    TaskBase* setTimeout(Callable callable, uint32_t ms, Args... args) 
+    TaskInterface* setTimeout(Callable callable, uint32_t ms, Args... args) 
     { return setTimeout(make_task(callable).setArgs({args...}), ms); }
 
-    void disableTask(TaskBase* task)
+    void disableTask(TaskInterface* task)
     { m_task_queue.disable(task); }
 
     void clearTimeout(void* faddr);
-    template<typename Ret, typename ...Args>
-    void clearTimeout(Ret func(Args...))
-    { clearTimeout((void*)func); }
+    template<typename Callable>
+    void clearTimeout(Callable callable)
+    { clearTimeout(TaskInterface::extract_raw_function_pointer(callable)); }
 
-    TaskBase* findTimeout(void* addr);
+    template<typename Callable>
+    TaskInterface* scheduleTimeout(const Task<Callable>& task, const Time& when);
+    template<typename Callable, typename ...Args, typename = decltype(std::invoke(std::declval<Callable>(), std::declval<Args>()...))>
+    TaskInterface* scheduleTimeout(Callable callable, const Time& when, Args... args) 
+    { return scheduleTimeout(make_task(callable).setArgs({args...}), when); }
+
+    TaskInterface* findTimeout(void* addr);
     template<typename Ret, typename ...Args>
-    TaskBase* findTimeout(Ret func(Args...))
+    TaskInterface* findTimeout(Ret func(Args...))
     { return findTimeout(reinterpret_cast<void*>(func)); }
 
 
     template<typename Callable>
-    TaskBase* bindEventHandler(TaskBase* &event_handler, const Task<Callable>& task);
+    TaskInterface* bindEventHandler(TaskInterface* &event_handler, const Task<Callable>& task);
 
     template<typename Callable, typename ...Args, typename = decltype(std::invoke(std::declval<Callable>(), std::declval<Args>()...))>
-    TaskBase* bindEventHandler(TaskBase* &event_handler, Callable callable, Args... args) 
+    TaskInterface* bindEventHandler(TaskInterface* &event_handler, Callable callable, Args... args) 
     { return bindEventHandler(event_handler, make_task(callable).setArgs({args...})); }
 
 
-    void clearEventHandler(TaskBase* &taskptr);
+    void clearEventHandler(TaskInterface* &taskptr);
 
     uint8_t runOnce(int16_t passed_ms)
     {
@@ -128,7 +134,7 @@ public:
 
 // execute the task in the next queue
 template<std::size_t taskbuf_size>
-TaskBase* EventLoop<taskbuf_size>::nextTick(const TaskBase* ptr)
+TaskInterface* EventLoop<taskbuf_size>::nextTick(const TaskInterface* ptr)
 {
     auto p = m_task_queue.push(ptr);
     m_next_end = m_task_queue.end();
@@ -140,9 +146,9 @@ TaskBase* EventLoop<taskbuf_size>::nextTick(const TaskBase* ptr)
 // delay a task for ms milliseconds
 template<std::size_t taskbuf_size>
 template<typename Callable>
-TaskBase* EventLoop<taskbuf_size>::setTimeout(const Task<Callable>& task, uint32_t ms)
+TaskInterface* EventLoop<taskbuf_size>::setTimeout(const Task<Callable>& task, uint32_t ms)
 {
-    TaskBase *p = nullptr;
+    TaskInterface *p = nullptr;
     if(ms < 0xFFFF)
     {
         p = m_task_queue.push(task.template transform<TimeoutTask>());
@@ -168,26 +174,51 @@ void EventLoop<taskbuf_size>::clearTimeout(void* faddr)
     // when runOnce() iterating current task queue, the timeout task iterated will be move to
     // the next queue. So the specified timeout task will exist once after where the clearTimeout() 
     // called, which is m_cur_begin.
-    for(TaskBase* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
+    for(TaskInterface* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
         if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LONGTIMEOUT ) && ptr->faddr() == faddr)    
             m_task_queue.disable(ptr);
 }
 
 // find the timeout task by the function pointer, if not found, return nullptr
 template<std::size_t taskbuf_size>
-TaskBase* EventLoop<taskbuf_size>::findTimeout(void* addr)
+TaskInterface* EventLoop<taskbuf_size>::findTimeout(void* addr)
 {
-    for(TaskBase* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
+    for(TaskInterface* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
         if((ptr->type() == TaskType::TIMEOUT || ptr->type() == TaskType::LONGTIMEOUT ) && ptr->faddr() == addr)    
             return ptr;
     return nullptr;
 }
 
+template<std::size_t taskbuf_size>
+template<typename Callable>
+TaskInterface* EventLoop<taskbuf_size>::scheduleTimeout(const Task<Callable>& task, const Time& when)
+{
+    TaskInterface *p = nullptr;
+    long long diff = when-Time::absolute();
+    if(diff < 0)
+        return nullptr;
+    if(diff < 0xFFFF)
+    {
+        p = m_task_queue.push(task.template transform<TimeoutTask>());
+        if(p)
+            p->setTimeLeft(diff);
+    }
+    else 
+    {
+        p = m_task_queue.push(task.template transform<LongTimeoutTask>());
+        if(p)
+            p->setScheduleTime(when);
+    }
+    m_next_end = m_task_queue.end();
+    if(!p && m_helper_functions && m_helper_functions->onTaskAllocationFailed)
+        m_helper_functions->onTaskAllocationFailed(task.faddr());
+    return p;
+}
 
 
 template<std::size_t taskbuf_size>
 template<typename Callable>
-TaskBase* EventLoop<taskbuf_size>::bindEventHandler(TaskBase* &event_handler, const Task<Callable> &task)
+TaskInterface* EventLoop<taskbuf_size>::bindEventHandler(TaskInterface* &event_handler, const Task<Callable> &task)
 {
     if(event_handler)
         clearEventHandler(event_handler);   // remove old binding first
@@ -203,7 +234,7 @@ TaskBase* EventLoop<taskbuf_size>::bindEventHandler(TaskBase* &event_handler, co
 }
 
 template<std::size_t taskbuf_size>
-void EventLoop<taskbuf_size>::clearEventHandler(TaskBase* &taskptr)
+void EventLoop<taskbuf_size>::clearEventHandler(TaskInterface* &taskptr)
 {
     if(taskptr && taskptr->type() == TaskType::EVENT)
         m_task_queue.disable(taskptr);
@@ -214,7 +245,7 @@ void EventLoop<taskbuf_size>::clearEventHandler(TaskBase* &taskptr)
 template<std::size_t taskbuf_size>
 void EventLoop<taskbuf_size>::runCurrentQueue(int16_t passed_ms)
 {
-    TaskBase *p = m_cur_begin;
+    TaskInterface *p = m_cur_begin;
     while(p != m_delimiter)
     {
         switch (p->type()) 

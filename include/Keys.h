@@ -46,7 +46,7 @@ protected:
     uint8_t m_state = 0;
     uint16_t m_cntms = 0;
 public:
-    using EventHandler = TaskBase*;
+    using EventHandler = TaskInterface*;
     // event handlers
     EventHandler onClick = nullptr;
     EventHandler onDoubleClick = nullptr;

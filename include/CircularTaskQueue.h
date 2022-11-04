@@ -35,15 +35,15 @@ public:
     char* getTruncated() { return m_truncated; }
     std::size_t getLength() { return length; }
 
-    TaskBase* begin() { return reinterpret_cast<TaskBase*>(m_begin); }
-    TaskBase* end() { return reinterpret_cast<TaskBase*>(m_end); }
-    TaskBase* next(TaskBase* cur);  
+    TaskInterface* begin() { return reinterpret_cast<TaskInterface*>(m_begin); }
+    TaskInterface* end() { return reinterpret_cast<TaskInterface*>(m_end); }
+    TaskInterface* next(TaskInterface* cur);  
 
-    TaskBase* push(const TaskBase* ptr);
-    TaskBase* push(const TaskBase &task) { return push(&task); }
+    TaskInterface* push(const TaskInterface* ptr);
+    TaskInterface* push(const TaskInterface &task) { return push(&task); }
 
     void pop();
-    void disable(const TaskBase* ptr);
+    void disable(const TaskInterface* ptr);
 };
 
 // calculate an available address for a new task, CANNOT be used in ISR
@@ -74,14 +74,14 @@ char* CircularTaskQueue<buffer_size>::calcAllocAddr(std::size_t size)
 
 // push a task to the front of the queue
 template<std::size_t buffer_size>
-TaskBase* CircularTaskQueue<buffer_size>::push(const TaskBase* ptr)
+TaskInterface* CircularTaskQueue<buffer_size>::push(const TaskInterface* ptr)
 {   // we have no type info here so just copy it by size
     const auto addr = calcAllocAddr(ptr->size());
     if(!addr)
         return nullptr;
     ptr->copy(addr);
     length++;
-    return reinterpret_cast<TaskBase*>(addr);
+    return reinterpret_cast<TaskInterface*>(addr);
 }
 
 // pop the element at the back of the queue
@@ -90,9 +90,9 @@ void CircularTaskQueue<buffer_size>::pop()
 {
     if(length <= 0)
         return;
-    auto todelete = reinterpret_cast<TaskBase*>(m_begin);
+    auto todelete = reinterpret_cast<TaskInterface*>(m_begin);
     std::size_t size = todelete->size();
-    todelete->~TaskBase(); // NOT using delete here since we constructed it IN PLACE!
+    todelete->~TaskInterface(); // NOT using delete here since we constructed it IN PLACE!
     if(m_truncated != nullptr && m_begin+size >= m_truncated)
     {   // [buffer_begin] <-- 0~n --> [end] <-- 0~n --> [begin] <-- 0~{size} --> [truncated] <-- 0-unused --> [buffer_end]
         m_begin = m_buffer_begin;   // skip the trucated region
@@ -105,21 +105,21 @@ void CircularTaskQueue<buffer_size>::pop()
 
 // disable a task in the queue, aka erase it
 template<std::size_t buffer_size>
-void CircularTaskQueue<buffer_size>::disable(const TaskBase *ptr)
+void CircularTaskQueue<buffer_size>::disable(const TaskInterface *ptr)
 {
     const auto size = ptr->size();
-    ptr->~TaskBase();
+    ptr->~TaskInterface();
     new((void*)ptr) DisabledTask(size); // in place new a DisableTask replacing the original one
 }
 
-// return the next TaskBase's address in the buffer, considered truncated case
+// return the next TaskInterface's address in the buffer, considered truncated case
 template<std::size_t buffer_size>
-TaskBase* CircularTaskQueue<buffer_size>::next(TaskBase* ptr)
+TaskInterface* CircularTaskQueue<buffer_size>::next(TaskInterface* ptr)
 {
     char* tmp = reinterpret_cast<char*>(ptr) + ptr->size();
     if(this->getTruncated()!=nullptr && tmp>=this->getTruncated())
         tmp = this->getBufferBegin();
-    return reinterpret_cast<TaskBase*>(tmp);
+    return reinterpret_cast<TaskInterface*>(tmp);
 }
 
 #endif

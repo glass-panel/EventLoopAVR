@@ -21,32 +21,32 @@ enum class TaskType : uint8_t
     DISABLED,
 };
 
-class TaskBase
+class TaskInterface
 {
 public:
-    TaskBase() {}
-    virtual ~TaskBase() {};
+    TaskInterface() {};
+    virtual ~TaskInterface() {};
 
     template<typename Ret, typename ...Args>
-    constexpr static void* extract_raw_function_pointer(Ret func(Args...))
+    static constexpr void* extract_raw_function_pointer(Ret func(Args...))
     { return (void*)func; }
     template<typename Callable>
-    constexpr static void* extract_raw_function_pointer(Callable callable)
+    static constexpr void* extract_raw_function_pointer(Callable callable)
     {
         auto funcptr = &std::remove_reference<Callable>::type::operator();
         return (void* &)funcptr;
     }
 
     // return the size of this task
-    virtual std::size_t size() const { return sizeof(TaskBase); }
+    virtual std::size_t size() const = 0;
     // return the task type
-    virtual TaskType type() const { return TaskType::DISABLED; }
+    virtual TaskType type() const = 0;
     // execute this task with the arguments inside
     virtual void exec() {};
     // return the function pointer of the task
     virtual void* faddr() const { return nullptr; }
     // copy this task to the specified destination
-    virtual void copy(void* dst) const { new(dst) TaskBase(*this); };
+    virtual void copy(void* dst) const { };
     
     // TimeoutTask<>: get the remaining time of the task
     virtual uint16_t getTimeLeft() const { return 0; }
@@ -61,7 +61,7 @@ public:
     // EventTask<>: update keeper of the task
     virtual void updateKeeper() { }
     // EventTask<>: set the keeper of the task
-    virtual void setKeeper(TaskBase** keeper) { }
+    virtual void setKeeper(TaskInterface** keeper) { }
 
     // in place new, stdc++ library for avr8 does not provide any new/delete opearator
     void* operator new(std::size_t size, void *ptr)
@@ -74,7 +74,7 @@ public:
     }
 };
 
-class DisabledTask : public TaskBase
+class DisabledTask : public TaskInterface
 {
 private:
     std::size_t m_size;
@@ -85,8 +85,11 @@ public:
     TaskType type() const final { return TaskType::DISABLED; }
 };
 
-template<template<class> class Derived, typename Callable>
-class TaskMixin : public TaskBase
+namespace task_impl
+{
+
+template<template<class> class Derived, typename Callable, typename Base>
+class TaskMixin : public Base
 {
 private:
     using StoreType = typename function_traits<Callable>::store_type;
@@ -107,62 +110,81 @@ public:
     void exec() final { std::apply(m_func, m_args); }
     
     std::size_t size() const final { return sizeof(Derived<Callable>); }
-    void* faddr() const final { return TaskBase::extract_raw_function_pointer(m_func); }
+    void* faddr() const final { return TaskInterface::extract_raw_function_pointer(m_func); }
     void copy(void *dst) const final { new(dst) Derived<Callable>(*static_cast<const Derived<Callable>*>(this)); }
 
     template<template<class> class Similar>
-    Similar<Callable> transform() const
+    constexpr Similar<Callable> transform() const
     {
         return Similar<Callable>(m_func).setArgs(m_args);
     }
 };
 
-template<typename Callable>
-class Task : public TaskMixin<Task, Callable>
+class DefaultTaskBase : public TaskInterface
 {
 public:
-    using TaskMixin<Task, Callable>::TaskMixin;
-
     TaskType type() const final { return TaskType::DEFAULT_TASK; }
 };
 
-template<typename Callable>
-class TimeoutTask : public TaskMixin<TimeoutTask, Callable>
+class TimeoutTaskBase : public TaskInterface
 {
 private:
     uint16_t m_time = 0;
 public:
-    using TaskMixin<TimeoutTask, Callable>::TaskMixin;
-
     TaskType type() const final { return TaskType::TIMEOUT; }
     uint16_t getTimeLeft() const final { return m_time; }
     void setTimeLeft(uint16_t ms) final { m_time = ms; }
 };
 
-template<typename Callable>
-class LongTimeoutTask : public TaskMixin<LongTimeoutTask, Callable>
+class LongTimeoutTaskBase : public TaskInterface
 {
 private:
     Time m_schedule = 0;
 public:
-    using TaskMixin<LongTimeoutTask, Callable>::TaskMixin;
-
     TaskType type() const final { return TaskType::LONGTIMEOUT; }
     Time getScheduleTime() const final { return m_schedule; }
     void setScheduleTime(const Time& time) final { m_schedule = time; }
 };
 
-template<typename Callable>
-class EventTask : public TaskMixin<EventTask, Callable>
+class EventTaskBase : public TaskInterface
 {
 private:
-    TaskBase** m_keeper = nullptr;
+    TaskInterface** m_keeper = nullptr;
 public:
-    using TaskMixin<EventTask, Callable>::TaskMixin;
-
     TaskType type() const final { return TaskType::EVENT; }
     void updateKeeper() final { if(m_keeper) *m_keeper = this; }
-    void setKeeper(TaskBase** keeper) final { m_keeper = keeper; }
+    void setKeeper(TaskInterface** keeper) final { m_keeper = keeper; }
+};
+
+};
+
+template<typename Callable>
+class Task : public task_impl::TaskMixin<Task, Callable, task_impl::DefaultTaskBase>
+{
+public:
+    using task_impl::TaskMixin<Task, Callable, task_impl::DefaultTaskBase>::TaskMixin;
+};
+
+template<typename Callable>
+class TimeoutTask : public task_impl::TaskMixin<TimeoutTask, Callable, task_impl::TimeoutTaskBase>
+{
+public:
+    using task_impl::TaskMixin<TimeoutTask, Callable, task_impl::TimeoutTaskBase>::TaskMixin;
+};
+
+template<typename Callable>
+class LongTimeoutTask : public task_impl::TaskMixin<LongTimeoutTask, Callable, task_impl::LongTimeoutTaskBase>
+{
+
+public:
+    using task_impl::TaskMixin<LongTimeoutTask, Callable, task_impl::LongTimeoutTaskBase>::TaskMixin;
+};
+
+template<typename Callable>
+class EventTask : public task_impl::TaskMixin<EventTask, Callable, task_impl::EventTaskBase>
+{
+public:
+    using task_impl::TaskMixin<EventTask, Callable, task_impl::EventTaskBase>::TaskMixin;
 };
 
 template<typename Callable>
