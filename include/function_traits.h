@@ -50,4 +50,13 @@ struct function_traits<ReturnType (Class::*)(ArgsType...) const>
     using store_type = Class;
 };
 
+template<typename ReturnType, typename Class, typename ...ArgsType>
+struct function_traits<ReturnType (Class::*)(ArgsType...)>
+{
+    using pointer = ReturnType (Class::*)(ArgsType...);
+    using return_type = ReturnType;
+    using arguments = std::tuple<ArgsType...>;
+    using store_type = Class;
+};
+
 #endif

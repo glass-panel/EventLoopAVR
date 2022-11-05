@@ -99,6 +99,22 @@ public:
     TaskInterface* findTimeout(Ret func(Args...))
     { return findTimeout(reinterpret_cast<void*>(func)); }
 
+    template<typename Callable>
+    TaskInterface* setInterval(const Task<Callable>& task, uint16_t ms);
+    template<typename Callable, typename ...Args, typename = decltype(std::invoke(std::declval<Callable>(), std::declval<Args>()...))>
+    TaskInterface* setInterval(Callable callable, uint16_t ms, Args... args) 
+    { return setInterval(make_task(callable).setArgs({args...}), ms); }
+
+    void clearInterval(void* faddr);
+    template<typename Callable>
+    void clearInterval(Callable callable)
+    { clearInterval(TaskInterface::extract_raw_function_pointer(callable)); }
+
+    TaskInterface* findInterval(void* addr);
+    template<typename Ret, typename ...Args>
+    TaskInterface* findInterval(Ret func(Args...))
+    { return findInterval(reinterpret_cast<void*>(func)); }
+
 
     template<typename Callable>
     TaskInterface* bindEventHandler(TaskInterface* &event_handler, const Task<Callable>& task);
@@ -215,6 +231,39 @@ TaskInterface* EventLoop<taskbuf_size>::scheduleTimeout(const Task<Callable>& ta
     return p;
 }
 
+template<std::size_t taskbuf_size>
+template<typename Callable>
+TaskInterface* EventLoop<taskbuf_size>::setInterval(const Task<Callable>& task, uint16_t ms)
+{
+    TaskInterface *p = nullptr;
+    p = m_task_queue.push(task.template transform<IntervalTask>());
+    if(p)
+    {
+        p->setTimeLeft(ms);
+        p->setInterval(ms);
+    }
+    m_next_end = m_task_queue.end();
+    if(!p && m_helper_functions && m_helper_functions->onTaskAllocationFailed)
+        m_helper_functions->onTaskAllocationFailed(task.faddr());
+    return p;
+}
+
+template<std::size_t taskbuf_size>
+void EventLoop<taskbuf_size>::clearInterval(void* faddr)
+{
+    for(TaskInterface* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
+        if((ptr->type() == TaskType::INTERVAL) && ptr->faddr() == faddr)    
+            m_task_queue.disable(ptr);
+}
+
+template<std::size_t taskbuf_size>
+TaskInterface* EventLoop<taskbuf_size>::findInterval(void* faddr)
+{
+    for(TaskInterface* ptr = m_cur_begin; ptr != m_next_end; ptr = m_task_queue.next(ptr))
+        if((ptr->type() == TaskType::INTERVAL) && ptr->faddr() == faddr)    
+            return ptr;
+    return nullptr;
+}
 
 template<std::size_t taskbuf_size>
 template<typename Callable>
@@ -258,9 +307,8 @@ void EventLoop<taskbuf_size>::runCurrentQueue(int16_t passed_ms)
                 p->exec();
             else
             {
-                auto next = nextTick(p);
-                if(next)
-                    next->setTimeLeft(p->getTimeLeft()-passed_ms);
+                p->setTimeLeft(p->getTimeLeft()-passed_ms);
+                nextTick(p);
             }
             break;
         case TaskType::LONGTIMEOUT:
@@ -274,6 +322,20 @@ void EventLoop<taskbuf_size>::runCurrentQueue(int16_t passed_ms)
             auto next = nextTick(p);
             if(next)
                 next->updateKeeper();
+            break;
+        }
+        case TaskType::INTERVAL:
+        {
+            auto t = (int32_t)p->getTimeLeft();
+            if(t <= passed_ms)
+            {
+                p->exec();
+                p->setTimeLeft(p->getInterval());
+            }
+            else
+                p->setTimeLeft(p->getTimeLeft()-passed_ms);
+            nextTick(p);
+            break;
         }
         default:
             break;

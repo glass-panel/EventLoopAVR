@@ -44,6 +44,12 @@ int main()
     eventloop.setTimeout(cancelThis, 60000);
     eventloop.clearTimeout(cancelThis);  // cancel the timeout task by function poineter
 
+    eventloop.setInterval([=]() mutable {
+        auto c = a+b;
+        a++;
+        b++;
+    }, 1000);
+
     eventloop.run();    // let the eventloop run!
     // without the help of postQueueProcess, the eventloop will quit after the final timeout task is executed. 
     return 0;

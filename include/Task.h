@@ -18,6 +18,7 @@ enum class TaskType : uint8_t
     TIMEOUT,
     LONGTIMEOUT,
     EVENT,
+    INTERVAL,
     DISABLED,
 };
 
@@ -48,9 +49,9 @@ public:
     // copy this task to the specified destination
     virtual void copy(void* dst) const { };
     
-    // TimeoutTask<>: get the remaining time of the task
+    // TimeoutTask<> || IntervalTask<>: get the remaining time of the task
     virtual uint16_t getTimeLeft() const { return 0; }
-    // TimeoutTask<>: set the remaining time of the task
+    // TimeoutTask<> || IntervalTask<>: set the remaining time of the task
     virtual void setTimeLeft(uint16_t ms) { }
 
     // LongTimeoutTask<>: get the schedule time of the task
@@ -62,6 +63,11 @@ public:
     virtual void updateKeeper() { }
     // EventTask<>: set the keeper of the task
     virtual void setKeeper(TaskInterface** keeper) { }
+
+    // IntervalTask<>: get interval time
+    virtual uint16_t getInterval() const { return 0; }
+    // IntervalTask<>: set interval time
+    virtual void setInterval(uint16_t interval) { }
 
     // in place new, stdc++ library for avr8 does not provide any new/delete opearator
     void* operator new(std::size_t size, void *ptr)
@@ -156,6 +162,19 @@ public:
     void setKeeper(TaskInterface** keeper) final { m_keeper = keeper; }
 };
 
+class IntervalTaskBase : public TaskInterface
+{
+private:
+    uint16_t m_interval = 0;
+    uint16_t m_time = 0;
+public:
+    TaskType type() const final { return TaskType::INTERVAL; }
+    uint16_t getInterval() const final { return m_interval; }
+    void setInterval(uint16_t ms) final { m_interval = ms; }
+    uint16_t getTimeLeft() const final { return m_time; }
+    void setTimeLeft(uint16_t ms) final { m_time = ms; }
+};
+
 };
 
 template<typename Callable>
@@ -185,6 +204,13 @@ class EventTask : public task_impl::TaskMixin<EventTask, Callable, task_impl::Ev
 {
 public:
     using task_impl::TaskMixin<EventTask, Callable, task_impl::EventTaskBase>::TaskMixin;
+};
+
+template<typename Callable>
+class IntervalTask : public task_impl::TaskMixin<IntervalTask, Callable, task_impl::IntervalTaskBase>
+{
+public:
+    using task_impl::TaskMixin<IntervalTask, Callable, task_impl::IntervalTaskBase>::TaskMixin;
 };
 
 template<typename Callable>

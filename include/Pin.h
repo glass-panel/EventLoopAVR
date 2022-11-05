@@ -17,7 +17,7 @@ template<const intptr_t& Address, uint8_t Index>
 struct PinT
 {
 static_assert(Index>=0 && Index<8, "Pin: Index must be in range [0, 7]");
-    static volatile bool get() { return (*(volatile uint8_t*)Address & (1<<Index)) != 0; }
+    static bool get() { return (*(volatile uint8_t*)Address & (1<<Index)) != 0; }
     static void set(bool value) 
     { 
         if(value) 
