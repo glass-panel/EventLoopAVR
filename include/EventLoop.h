@@ -212,7 +212,7 @@ TaskInterface* EventLoop<taskbuf_size>::scheduleTimeout(const Task<Callable>& ta
     TaskInterface *p = nullptr;
     long long diff = when-Time::absolute();
     if(diff < 0)
-        return nullptr;
+        return nextTick(task);  // run missed task next tick
     if(diff < 0xFFFF)
     {
         p = m_task_queue.push(task.template transform<TimeoutTask>());

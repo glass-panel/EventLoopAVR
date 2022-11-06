@@ -2,6 +2,7 @@
     #define __TASK_H__
 
 #ifdef USE_STDCPP_LIB
+    #include <type_traits>
     #include <tuple>
     #include <cstdint>
     #include <cstdlib>
@@ -28,16 +29,25 @@ public:
     TaskInterface() {};
     virtual ~TaskInterface() {};
 
+    // for normal function
     template<typename Ret, typename ...Args>
     static constexpr void* extract_raw_function_pointer(Ret func(Args...))
     { return (void*)func; }
+    // for member function
+    template<typename Ret, typename Class, typename ...Args>
+    static constexpr void* extract_raw_function_pointer(Ret (Class::* func)(Args...))
+    { return (void* &)func; }
+    // for const member function
+    template<typename Ret, typename Class, typename ...Args>
+    static constexpr void* extract_raw_function_pointer(Ret (Class::* func)(Args...) const)
+    { return (void* &)func; }
+    // for lambda function
     template<typename Callable>
-    static constexpr void* extract_raw_function_pointer(Callable callable)
+    static void* extract_raw_function_pointer(const Callable&)
     {
-        auto funcptr = &std::remove_reference<Callable>::type::operator();
+        auto funcptr = &Callable::operator();
         return (void* &)funcptr;
     }
-
     // return the size of this task
     virtual std::size_t size() const = 0;
     // return the task type
@@ -98,8 +108,17 @@ template<template<class> class Derived, typename Callable, typename Base>
 class TaskMixin : public Base
 {
 private:
-    using StoreType = typename function_traits<Callable>::store_type;
-    using Arguments = typename function_traits<Callable>::arguments;    
+    using ClassType = typename function_traits<Callable>::class_type;
+    using StoreType = typename  std::conditional<
+                                    std::is_same<ClassType, Callable>::value, 
+                                    typename function_traits<Callable>::class_type,
+                                    typename function_traits<Callable>::pointer
+                                >::type;
+    using Arguments = typename  std::conditional<
+                                    std::is_same<ClassType, Callable>::value, 
+                                    typename function_traits<Callable>::arguments,
+                                    typename function_traits<Callable>::this_arguments
+                                >::type;    
     Arguments m_args;
     StoreType m_func;
 public:

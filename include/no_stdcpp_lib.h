@@ -149,25 +149,6 @@ namespace stl_metaprog_alternative
     /* --- end std::index_sequence implementation --- */
 
     /*
-        Implementation of std::apply
-        ref: https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
-    */
-
-    template<typename Callable, typename ArgsTuple, size_t... Is>
-    auto applyImpl(Callable&& f, ArgsTuple&& t, index_sequence<Is...>) -> decltype(f(get<Is>(t)...))
-    {
-        return f(get<Is>(t)...);
-    }
-
-    template<typename Callable, typename ArgsTuple>
-    constexpr auto apply(Callable&& f, ArgsTuple&& t) -> decltype(applyImpl(f, t, make_index_sequence<tuple_size<ArgsTuple>::value>{}))
-    {
-        return applyImpl(f, t, make_index_sequence<tuple_size<ArgsTuple>::value>{});
-    }
-
-    /* --- end std::apply implementation --- */
-
-    /*
         Implementation of std::invoke
     */
 
@@ -177,7 +158,32 @@ namespace stl_metaprog_alternative
         return f(args...);
     }
 
+    template<typename Ret, typename Class, typename T, typename ...Args>
+    constexpr auto invoke(Ret (Class::*f)(Args...), T&& self, Args&&... args) -> decltype( ((*self).*f)(args...) )
+    {
+        return ((*self).*f)(args...);
+    }
+
     /* --- end std::invoke implementation --- */
+
+    /*
+        Implementation of std::apply
+        ref: https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
+    */
+
+    template<typename Callable, typename ArgsTuple, size_t ...Is>
+    constexpr auto applyImpl(Callable&& f, ArgsTuple&& t, index_sequence<Is...>) -> decltype(invoke(f, get<Is>(t)...))
+    {
+        return invoke(f, get<Is>(t)...);
+    }
+
+    template<typename Callable, typename ArgsTuple>
+    constexpr auto apply(Callable&& f, ArgsTuple&& t) -> decltype(applyImpl(f, t, make_index_sequence<tuple_size<ArgsTuple>::value>{}))
+    {
+        return applyImpl(f, t, make_index_sequence<tuple_size<ArgsTuple>::value>{});
+    }
+
+    /* --- end std::apply implementation --- */
 
     /*
         Implementation of std::enable_if
@@ -211,6 +217,36 @@ namespace stl_metaprog_alternative
 
     /* --- end std::declval implementation --- */
 
+    /*
+        Implementation of std::conditional
+        ref: https://en.cppreference.com/w/cpp/types/conditional
+    */
+    
+    template<bool B, class T, class F>
+    struct conditional { using type = T; };
+
+    template<class T, class F>
+    struct conditional<false, T, F> { using type = F; };
+
+    /* --- end std::conditional implementation --- */
+
+    /*
+        Implementation of std::false_type and std::true_type
+        ref: https://en.cppreference.com/w/cpp/types/integral_constant
+    */
+
+    /*
+        Implementation of std::is_same
+        ref: https://en.cppreference.com/w/cpp/types/is_same
+    */
+
+    template<class T, class U>
+    struct is_same { static constexpr bool value = false; };
+
+    template<class T>
+    struct is_same<T, T> { static constexpr bool value = true; };
+
+    /* --- end std::is_same implementation --- */
 }
 
 namespace std
@@ -271,6 +307,12 @@ namespace std
         return stl_metaprog_alternative::declval<T>();
     }
     
+    template<bool B, class T, class F>
+    using conditional = stl_metaprog_alternative::conditional<B, T, F>;
+
+    template<class T, class U>
+    struct is_same : stl_metaprog_alternative::is_same<T, U> {};
+
 }
 
 #endif

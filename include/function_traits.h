@@ -20,7 +20,8 @@ struct function_traits<ReturnType (&)(ArgsType...)>
     using pointer = ReturnType (*)(ArgsType...);
     using return_type = ReturnType;
     using arguments = std::tuple<ArgsType...>;
-    using store_type = pointer;
+    using this_arguments = arguments;
+    using class_type = pointer;
 };
 
 template<typename ReturnType, typename ...ArgsType>
@@ -29,7 +30,8 @@ struct function_traits<ReturnType (*)(ArgsType...)>
     using pointer = ReturnType (*)(ArgsType...);
     using return_type = ReturnType;
     using arguments = std::tuple<ArgsType...>;
-    using store_type = pointer;
+    using this_arguments = arguments;
+    using class_type = pointer;
 };
 
 template<typename ReturnType, typename ...ArgsType>
@@ -38,16 +40,18 @@ struct function_traits<ReturnType (ArgsType...)>
     using pointer = ReturnType (*)(ArgsType...);
     using return_type = ReturnType;
     using arguments = std::tuple<ArgsType...>;
-    using store_type = pointer;
+    using this_arguments = arguments;
+    using class_type = pointer;
 };
 
 template<typename ReturnType, typename Class, typename ...ArgsType>
 struct function_traits<ReturnType (Class::*)(ArgsType...) const>
 {
-    using pointer = ReturnType (Class::*)(ArgsType...);
+    using pointer = ReturnType (Class::*)(ArgsType...) const;
     using return_type = ReturnType;
     using arguments = std::tuple<ArgsType...>;
-    using store_type = Class;
+    using this_arguments = std::tuple<const Class*, ArgsType...>;
+    using class_type = Class;
 };
 
 template<typename ReturnType, typename Class, typename ...ArgsType>
@@ -56,7 +60,8 @@ struct function_traits<ReturnType (Class::*)(ArgsType...)>
     using pointer = ReturnType (Class::*)(ArgsType...);
     using return_type = ReturnType;
     using arguments = std::tuple<ArgsType...>;
-    using store_type = Class;
+    using this_arguments = std::tuple<Class*, ArgsType...>;
+    using class_type = Class;
 };
 
 #endif

@@ -25,6 +25,19 @@ int cancelThis()
     return 0;
 }
 
+class Counter
+{
+private:
+    int cnt = 0;
+public:
+    int cntpp()
+    {
+        return cnt++;
+    }
+};
+
+Counter counter;
+
 int main()
 {
     Time::absolute();   // init Time singleton
@@ -44,11 +57,13 @@ int main()
     eventloop.setTimeout(cancelThis, 60000);
     eventloop.clearTimeout(cancelThis);  // cancel the timeout task by function poineter
 
-    eventloop.setInterval([=]() mutable {
+    eventloop.setInterval([=]() mutable {   // supports mutable lambda function as well 
         auto c = a+b;
         a++;
         b++;
     }, 1000);
+
+    eventloop.setTimeout(&Counter::cntpp, 1000, &counter); // and it even supports member function
 
     eventloop.run();    // let the eventloop run!
     // without the help of postQueueProcess, the eventloop will quit after the final timeout task is executed. 
