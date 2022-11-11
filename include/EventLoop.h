@@ -341,8 +341,8 @@ void EventLoop<taskbuf_size>::runCurrentQueue(int16_t passed_ms)
             break;
         }
         p = m_task_queue.next(p);
-        if(m_task_queue.getTruncated()==reinterpret_cast<char*>(m_delimiter))
-            m_delimiter = p; // when the queue is truncated, the delimiter, which equals to p
+        if(reinterpret_cast<char*>(p)==m_task_queue.getBufferBegin() && m_task_queue.getTruncated()==reinterpret_cast<char*>(m_delimiter))
+            m_delimiter = p;    // if p crosses the truncated boundary and current delimiter also equals to it, update the delimiter to p to termiante loop
         m_task_queue.pop();
         m_cur_begin = p;
     }   
