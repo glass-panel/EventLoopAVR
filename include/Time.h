@@ -8,6 +8,8 @@
     #include "no_stdcpp_lib.h"
 #endif
 
+#include <util/atomic.h>
+#include "compile_time.h"
 /*  
     Time Singleton: Provide the type to represent time, 
     and holds the current time from booted up and offset to the real time
@@ -26,8 +28,13 @@ public:
     
     operator uint64_t() const { return ((uint64_t)m_1<<16) + m_2; }
 
-    static Time absolute() { return getInstance(); }
-    static Time now() { return getInstance() + s_offset; }
+    static Time absolute() 
+    { 
+        Time temp;
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { temp = getInstance(); } 
+        return temp; 
+    }
+    static Time now() { return absolute() + s_offset; }
     static int64_t getOffset() { return s_offset; }
     static void setOffset(int64_t offset) { s_offset = offset; }
 
